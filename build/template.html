@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#ELITE Offseason HQ</title>
+<style>
+@font-face{
+  font-family:'Bebas Neue';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_BEBAS}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO400}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO500}}) format('woff2');
+}
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_INTER}}) format('woff2');
+}
+
+:root{
+  --bg:#edf1f8;
+  --tile:#ffffff;
+  --tile-hover:#f5f8fd;
+  --ink:#1a1e35;
+  --ink-dim:#666e93;
+  --ink-faint:#9aa1c2;
+  --border:#dde3f2;
+  --border-soft:#e8ecf7;
+  --red:#d5473b;
+  --red-dim:#fbe6e3;
+  --red-ink:#a5372e;
+  --blue:#3059d6;
+  --blue-dim:#e2e9fc;
+  --blue-ink:#24449e;
+  --pos-qb:#c96a2e;
+  --pos-rb:#1f8f6f;
+  --pos-wr:#7860c9;
+  --pos-te:#c1508d;
+  --pos-d:#5b6178;
+  --good:#1f8f5b;
+  --good-dim:#dcf2e6;
+  --good-ink:#166b44;
+  --warn:#a3791a;
+  --warn-dim:#f7ecd2;
+  --warn-ink:#7a5a10;
+  --shadow:0 1px 2px rgba(26,30,53,0.04), 0 8px 24px -12px rgba(26,30,53,0.10);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1226;
+  --tile:#181c38;
+  --tile-hover:#1f2444;
+  --ink:#eef0fb;
+  --ink-dim:#a7addc;
+  --ink-faint:#6f76a3;
+  --border:#2a2f57;
+  --border-soft:#232852;
+  --red:#f0796d;
+  --red-dim:rgba(240,121,109,0.14);
+  --red-ink:#f7a89f;
+  --blue:#7f9dff;
+  --blue-dim:rgba(127,157,255,0.14);
+  --blue-ink:#a9bdff;
+  --pos-qb:#e08a4e;
+  --pos-rb:#3fbf98;
+  --pos-wr:#a08de8;
+  --pos-te:#e17cb0;
+  --pos-d:#8891b0;
+  --good:#3fbf82;
+  --good-dim:rgba(63,191,130,0.16);
+  --good-ink:#8fe0b6;
+  --warn:#e0b84e;
+  --warn-dim:rgba(224,184,78,0.16);
+  --warn-ink:#f0d38f;
+  --shadow:0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.4);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1226;
+    --tile:#181c38;
+    --tile-hover:#1f2444;
+    --ink:#eef0fb;
+    --ink-dim:#a7addc;
+    --ink-faint:#6f76a3;
+    --border:#2a2f57;
+    --border-soft:#232852;
+    --red:#f0796d;
+    --red-dim:rgba(240,121,109,0.14);
+    --red-ink:#f7a89f;
+    --blue:#7f9dff;
+    --blue-dim:rgba(127,157,255,0.14);
+    --blue-ink:#a9bdff;
+    --pos-qb:#e08a4e;
+    --pos-rb:#3fbf98;
+    --pos-wr:#a08de8;
+    --pos-te:#e17cb0;
+    --pos-d:#8891b0;
+    --good:#3fbf82;
+    --good-dim:rgba(63,191,130,0.16);
+    --good-ink:#8fe0b6;
+    --warn:#e0b84e;
+    --warn-dim:rgba(224,184,78,0.16);
+    --warn-ink:#f0d38f;
+    --shadow:0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.4);
+  }
+}
+
+*{ box-sizing:border-box; }
+html,body{ max-width:100%; overflow-x:hidden; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:1180px; margin:0 auto; padding:28px 20px 70px; }
+
+a{ color:var(--blue); }
+::selection{ background:var(--blue-dim); }
+
+/* ---------- Header ---------- */
+header{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  padding-bottom:22px;
+  margin-bottom:22px;
+  border-bottom:1px solid var(--border);
+}
+.eyebrow{
+  font-family:'DM Mono',monospace;
+  font-size:12px;
+  letter-spacing:2.5px;
+  color:var(--red);
+  text-transform:uppercase;
+  font-weight:500;
+}
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-weight:400;
+  font-size:52px;
+  letter-spacing:0.5px;
+  margin:2px 0 4px;
+  line-height:0.95;
+  text-transform:uppercase;
+  text-wrap:balance;
+}
+header p{
+  color:var(--ink-dim);
+  font-size:14.5px;
+  max-width:520px;
+  margin:0;
+}
+.header-meta{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+  font-family:'DM Mono',monospace;
+  font-size:11.5px;
+  color:var(--ink-faint);
+  text-align:right;
+}
+.theme-toggle{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.5px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  color:var(--ink-dim);
+  border-radius:20px;
+  padding:5px 12px;
+  cursor:pointer;
+}
+.theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+/* ---------- Tabs ---------- */
+.tabs{
+  display:flex;
+  gap:4px;
+  flex-wrap:wrap;
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:5px;
+  margin-bottom:26px;
+  box-shadow:var(--shadow);
+}
+.tab-btn{
+  flex:1 1 auto;
+  font-family:'DM Mono',monospace;
+  font-size:12.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  background:transparent;
+  border:none;
+  color:var(--ink-dim);
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.tab-btn:hover{ background:var(--tile-hover); color:var(--ink); }
+.tab-btn.active{
+  background:var(--ink);
+  color:var(--bg);
+  font-weight:500;
+}
+:root[data-theme="dark"] .tab-btn.active{ background:var(--blue); color:#0f1226; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .tab-btn.active{ background:var(--blue); color:#0f1226; } }
+
+.tab-panel{ display:none; }
+.tab-panel.active{ display:block; }
+
+/* ---------- Sections / cards ---------- */
+section{ margin-bottom:34px; }
+.section-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:26px;
+  letter-spacing:0.3px;
+  text-transform:uppercase;
+  color:var(--ink);
+  margin:0 0 4px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.section-title::before{
+  content:'';
+  width:5px;
+  height:20px;
+  background:var(--red);
+  border-radius:2px;
+  display:inline-block;
+}
+.subnote{ color:var(--ink-dim); font-size:13.5px; margin:0 0 16px; max-width:640px; }
+
+.card{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px 18px;
+  box-shadow:var(--shadow);
+}
+.banner{
+  background:var(--blue-dim);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 16px;
+  font-size:12.5px;
+  color:var(--ink-dim);
+  margin-bottom:18px;
+  line-height:1.6;
+}
+.banner b{ color:var(--ink); }
+.banner.data-note{ background:var(--tile); }
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  font-family:'DM Mono',monospace;
+  font-weight:500;
+  font-size:11px;
+  letter-spacing:0.5px;
+  padding:3px 9px;
+  border-radius:20px;
+  white-space:nowrap;
+  border:1px solid transparent;
+}
+.b-none{ background:var(--border-soft); color:var(--ink-dim); }
+.b-keeper{ background:var(--blue-dim); color:var(--blue-ink); border-color:var(--blue-dim); }
+.b-r{ background:transparent; color:var(--ink-faint); border:1px dashed var(--ink-faint); font-size:10px; padding:1px 6px; }
+.val-elite{ background:var(--good-dim); color:var(--good-ink); border-color:var(--good-dim); }
+.val-good{ background:var(--good-dim); color:var(--good-ink); border-color:var(--good-dim); opacity:0.82; }
+.val-fair{ background:var(--warn-dim); color:var(--warn-ink); border-color:var(--warn-dim); }
+.val-overpay{ background:var(--red-dim); color:var(--red-ink); border-color:var(--red-dim); }
+
+/* ---------- Legend ---------- */
+.legend{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(230px,1fr));
+  gap:10px;
+}
+.legend-item{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  box-shadow:var(--shadow);
+}
+.legend-item span.txt{ font-size:13px; color:var(--ink-dim); line-height:1.4; padding-top:2px; }
+
+/* ---------- Rules accordion ---------- */
+.rule{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin-bottom:10px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.rule summary{
+  cursor:pointer;
+  padding:13px 18px;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:19px;
+  letter-spacing:0.3px;
+  color:var(--ink);
+  list-style:none;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.rule summary::-webkit-details-marker{ display:none; }
+.rule summary::after{
+  content:'+';
+  font-family:'Inter',sans-serif;
+  font-size:18px;
+  color:var(--red);
+}
+.rule[open] summary::after{ content:'\2212'; }
+.rule-body{
+  padding:0 18px 16px;
+  font-size:13.5px;
+  color:var(--ink-dim);
+  line-height:1.65;
+}
+.rule-body b{ color:var(--ink); }
+
+/* ---------- League settings grid ---------- */
+.settings-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+}
+.settings-cell{
+  background:var(--tile);
+  padding:14px 16px;
+}
+.settings-cell .label{
+  font-family:'DM Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  margin-bottom:4px;
+}
+.settings-cell .value{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:22px;
+  color:var(--ink);
+  letter-spacing:0.3px;
+}
+.settings-cell .value.small{ font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; }
+
+/* ---------- Toolbar / inputs ---------- */
+.toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+input, select{
+  font-family:'Inter',sans-serif;
+  background:var(--tile);
+  border:1px solid var(--border);
+  color:var(--ink);
+  border-radius:8px;
+  padding:8px 11px;
+  font-size:13px;
+}
+input::placeholder{ color:var(--ink-faint); }
+input:focus, select:focus, button:focus-visible{ outline:2px solid var(--blue); outline-offset:1px; }
+button{
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:13px;
+  background:var(--ink);
+  color:var(--bg);
+  border:none;
+  border-radius:8px;
+  padding:9px 14px;
+  cursor:pointer;
+}
+button.secondary{ background:var(--tile); color:var(--ink); border:1px solid var(--border); }
+label.checkline{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ink-dim); }
+
+/* ---------- Tables ---------- */
+.table-scroll{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; background:var(--tile); box-shadow:var(--shadow); }
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+th{
+  background:var(--tile-hover);
+  color:var(--ink-dim);
+  font-family:'DM Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  text-align:left;
+  padding:11px 12px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td{ padding:9px 12px; border-bottom:1px solid var(--border-soft); vertical-align:middle; font-variant-numeric:tabular-nums; }
+tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--tile-hover); }
+th.sortable{ cursor:pointer; user-select:none; }
+th.sortable:hover{ color:var(--ink); }
+th.sortable .arrow{ color:var(--ink-faint); margin-left:3px; font-size:9px; }
+th.sortable.active .arrow{ color:var(--red); }
+.clear-sort{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  color:var(--blue);
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  margin-left:8px;
+}
+.pos-accent{ border-left:3px solid transparent; }
+.pos-tag{
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:0.5px;
+  padding:2px 7px;
+  border-radius:5px;
+}
+.pos-QB{ border-left-color:var(--pos-qb) !important; }
+.pos-RB{ border-left-color:var(--pos-rb) !important; }
+.pos-WR{ border-left-color:var(--pos-wr) !important; }
+.pos-TE{ border-left-color:var(--pos-te) !important; }
+.pos-D{ border-left-color:var(--pos-d) !important; }
+.pos-tag.pos-QB{ background:color-mix(in srgb, var(--pos-qb) 16%, transparent); color:var(--pos-qb); }
+.pos-tag.pos-RB{ background:color-mix(in srgb, var(--pos-rb) 16%, transparent); color:var(--pos-rb); }
+.pos-tag.pos-WR{ background:color-mix(in srgb, var(--pos-wr) 16%, transparent); color:var(--pos-wr); }
+.pos-tag.pos-TE{ background:color-mix(in srgb, var(--pos-te) 16%, transparent); color:var(--pos-te); }
+.pos-tag.pos-D{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
+.cost-cell{ font-family:'DM Mono',monospace; font-weight:500; }
+.cost-ok{ color:var(--ink); }
+.cost-no{ color:var(--ink-faint); }
+.val-cell{ font-family:'DM Mono',monospace; color:var(--ink-dim); }
+.note-cell{ color:var(--ink-faint); font-size:12px; }
+
+/* ---------- Overview ---------- */
+.overview-summary{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+  gap:10px;
+  margin-bottom:24px;
+}
+.stat-box{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px 16px;
+  text-align:center;
+  box-shadow:var(--shadow);
+}
+.stat-box .stat-num{ font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--ink); line-height:1; }
+.stat-box .stat-label{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.5px; font-family:'DM Mono',monospace; margin-top:4px; }
+
+.pos-group{ margin-bottom:16px; }
+.pos-group h4{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:19px;
+  color:var(--ink);
+  margin:0 0 8px;
+  letter-spacing:0.3px;
+}
+.overview-row{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:8px 4px; border-bottom:1px solid var(--border-soft);
+  font-size:13px;
+}
+.overview-row:last-child{ border-bottom:none; }
+.overview-row .oname{ min-width:170px; }
+.overview-row .ocost{ margin-left:auto; font-family:'DM Mono',monospace; font-size:12px; color:var(--ink-dim); text-align:right; }
+
+.picks-year-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  gap:14px;
+  margin-top:8px;
+}
+.picks-year-card{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px;
+  box-shadow:var(--shadow);
+}
+.picks-year-card h4{ font-family:'Bebas Neue',sans-serif; font-size:19px; color:var(--ink); margin:0 0 8px; }
+.pick-chip{
+  display:inline-block;
+  font-family:'DM Mono',monospace;
+  font-size:11.5px;
+  background:var(--tile-hover);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:4px 8px;
+  margin:0 6px 6px 0;
+  cursor:default;
+}
+.pick-chip.clickable{ cursor:pointer; }
+.pick-chip .via{ color:var(--ink-faint); font-size:10px; }
+
+.pivot-table{ font-size:12px; }
+.pivot-table th, .pivot-table td{ padding:7px 9px; text-align:center; }
+.pivot-table td:first-child, .pivot-table th:first-child{ text-align:left; }
+.pivot-table .pivot-total{ color:var(--red); font-weight:600; }
+.pivot-table tr.pivot-league-total td{ color:var(--ink); font-family:'DM Mono',monospace; border-top:2px solid var(--border); background:var(--tile-hover); }
+.pivot-year-label{ font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--ink); margin:16px 0 6px; }
+.pivot-year-label:first-child{ margin-top:0; }
+
+.empty-hint{ color:var(--ink-faint); font-size:13px; padding:16px; background:var(--tile); border:1px dashed var(--border); border-radius:10px; }
+
+/* ---------- Keep planner ---------- */
+.results-detail{ margin-top:12px; }
+
+footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44px; font-family:'DM Mono',monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">#ELITE Fantasy Football &middot; Season 2026</div>
+      <h1>Offseason HQ</h1>
+      <p>Every roster, every keeper cost, every future pick — pulled straight from the league and laid out so the whole league can plan the offseason in one place.</p>
+    </div>
+    <div class="header-meta">
+      <span id="dataAsOf">Synced from MFL League 31492</span>
+      <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn">Theme: Auto</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="rules">Rules &amp; Settings</button>
+    <button class="tab-btn" data-tab="overview">Team Overview</button>
+    <button class="tab-btn" data-tab="roster">Roster &amp; Keepers</button>
+    <button class="tab-btn" data-tab="picks">Draft Picks</button>
+    <button class="tab-btn" data-tab="trade">Trade Finder</button>
+  </nav>
+
+  <!-- RULES TAB -->
+  <section id="tab-rules" class="tab-panel active">
+    <div class="card" style="margin-bottom:26px; border-style:dashed;">
+      <div style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--red); margin-bottom:6px;">Coming Soon</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:4px;">New Rules for Next Season</div>
+      <p class="subnote" style="margin:0;">The league is discussing some changes for the upcoming season &mdash; this space will get filled in once they're finalized.</p>
+    </div>
+
+    <div class="section-title">Designation Legend</div>
+    <div class="legend">
+      <div class="legend-item"><span class="badge b-none">NONE</span><span class="txt">Not currently a keeper &mdash; eligible to be kept at the round shown, if he qualifies (see rules below).</span></div>
+      <div class="legend-item"><span class="badge b-keeper">KEEPER</span><span class="txt">Was kept last season. That's a record of what already happened, not who's getting kept for the upcoming draft &mdash; nobody's picked yet.</span></div>
+      <div class="legend-item"><span class="badge b-r" style="font-size:11px; padding:2px 8px;">R</span><span class="txt">Rookie &mdash; first season in the league.</span></div>
+    </div>
+
+    <div class="section-title" style="margin-top:32px;">How Keepers Work</div>
+    <details class="rule" open>
+      <summary>No Year Limit &mdash; Just Escalating Cost</summary>
+      <div class="rule-body">
+        Keepers <b>don't expire after a set number of years.</b> A player stays keeper-eligible for as long as his owner wants him and he still qualifies &mdash; the only thing that changes year to year is what he costs. Each team can carry <b>up to 2</b> keepers at a time.
+      </div>
+    </details>
+    <details class="rule" open>
+      <summary>How the Keeper Cost Escalates</summary>
+      <div class="rule-body">
+        <ul>
+          <li>A drafted player can be kept at <b>one round better</b> than where he was picked (e.g. drafted Rd 8 &rarr; costs Rd 7 to keep).</li>
+          <li>Keep him again the following year and the cost <b>jumps 2 rounds</b> instead of 1 &mdash; marked with an <b>*</b> in the original spreadsheet. Every year kept after that keeps jumping the same way.</li>
+          <li>Players originally drafted in <b>rounds 3&ndash;5</b> are capped at a <b>1st-round</b> keeper cost no matter how far the math would otherwise push them.</li>
+          <li>Players drafted in <b>round 1 or 2</b> the prior year <b>can't be kept</b> that first offseason.</li>
+        </ul>
+        The Keeper Cost column isn't computed live on this page &mdash; it's entered by the commissioner right after each draft using the rules above. If a number here looks off, it's a data entry to fix, not a rule to debug.
+      </div>
+    </details>
+    <details class="rule">
+      <summary>How We Score Keeper Value</summary>
+      <div class="rule-body">
+        The <b>Value</b> tag compares what a player is actually worth on today's trade market (his KTC value) against what an <b>actual rookie draft pick in that same round</b> is worth on that same market right now. If a player's own trade value comfortably beats the pick you're spending to keep him, that's a good keep; if it doesn't, you're paying up. Because keeper costs are set relative to where a player was drafted &mdash; not to his current trade value &mdash; most keepers in a league like this will price out as good value by design. That's normal. The tag is most useful for spotting the <i>rare true overpay</i> and for ranking keepers against each other, not as an absolute grade.
+        <ul>
+          <li><b>Elite Value</b> &mdash; worth 7&times; or more what the pick costs.</li>
+          <li><b>Good Value</b> &mdash; worth 3&ndash;7&times; the pick.</li>
+          <li><b>Fair Value</b> &mdash; worth 1&ndash;3&times; the pick.</li>
+          <li><b>Overpay</b> &mdash; worth less than the pick you're spending to keep him.</li>
+        </ul>
+        Pick values for rounds 5 and later aren't priced distinctly by the market (they trade for very little), so those are estimated on a smooth curve rather than pulled directly from KTC.
+      </div>
+    </details>
+
+    <div class="section-title" style="margin-top:32px;">League Settings</div>
+    <div class="settings-grid">
+      <div class="settings-cell"><div class="label">Teams</div><div class="value">14</div></div>
+      <div class="settings-cell"><div class="label">Roster Size</div><div class="value">15</div></div>
+      <div class="settings-cell"><div class="label">Starters</div><div class="value small">QB 1&ndash;2 &middot; RB 2&ndash;4 &middot; WR 2&ndash;4 &middot; TE 1&ndash;3 &middot; DEF 1</div></div>
+      <div class="settings-cell"><div class="label">Max at QB</div><div class="value">3</div></div>
+      <div class="settings-cell"><div class="label">Waivers</div><div class="value small">Blind bid, FCFS tiebreak &middot; $200 budget</div></div>
+      <div class="settings-cell"><div class="label">Draft</div><div class="value small">Live snake, 1.5 min clock</div></div>
+    </div>
+
+    <div class="banner data-note" style="margin-top:22px;">
+      <b>About this data:</b> rosters, keeper costs and draft picks are a snapshot pulled directly from MFL League #31492, refreshed on request. Player market values (Trade Finder tab) are a separate snapshot from KeepTradeCut's crowdsourced dynasty rankings (Superflex, .5 PPR) &mdash; matched for most rostered players; a handful of deep-roster names and all D/ST simply don't carry a market value. Ask any time and both can be refreshed.
+    </div>
+  </section>
+
+  <!-- TEAM OVERVIEW TAB -->
+  <section id="tab-overview" class="tab-panel">
+    <div class="section-title">Team Overview</div>
+    <p class="subnote">Pick a team for a one-screen view of their roster, keeper math, and picks through 2029.</p>
+
+    <div class="toolbar">
+      <select id="overviewTeamSelect" onchange="renderTeamOverview()"><option value="">Choose a team&hellip;</option></select>
+    </div>
+    <div id="overviewContent"></div>
+  </section>
+
+  <!-- ROSTER TAB -->
+  <section id="tab-roster" class="tab-panel">
+    <div class="section-title">Roster &amp; Keepers</div>
+    <p class="subnote">All 14 rosters with keeper cost math built in.</p>
+
+    <div class="section-title" style="font-size:22px;">Best Keeper Value, Leaguewide</div>
+    <p class="subnote">The top 30 rostered players by keeper value, across all 14 teams &mdash; not grouped by position. Nobody's keeper picks for the upcoming draft are locked in yet, so this covers everyone, not just last season's keepers. See "How We Score Keeper Value" on the Rules tab for how it's calculated.</p>
+    <div class="table-scroll" style="margin-bottom:30px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Team</th>
+            <th>Kept Last Year?</th>
+            <th>Keeper Cost</th>
+            <th>Market Value</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="valueRankBody"></tbody>
+      </table>
+    </div>
+
+    <div class="toolbar">
+      <input id="search" type="text" placeholder="Search player or team&hellip;" oninput="renderRosterTable()">
+      <select id="teamFilter" onchange="renderRosterTable()"><option value="">All teams</option></select>
+      <select id="posFilter" onchange="renderRosterTable()">
+        <option value="">All positions</option>
+        <option value="QB">QB</option>
+        <option value="RB">RB</option>
+        <option value="WR">WR</option>
+        <option value="TE">TE</option>
+        <option value="D">D/ST</option>
+      </select>
+      <label class="checkline"><input type="checkbox" id="rookieOnlyFilter" onchange="renderRosterTable()"> Rookies only</label>
+    </div>
+    <div id="sortStatus" style="min-height:16px; margin-bottom:8px;"></div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Pos</th>
+            <th>Player</th>
+            <th>Acquired</th>
+            <th>Kept Last Year?</th>
+            <th class="sortable" onclick="sortRosterBy('cost')">Keeper Cost<span class="arrow" id="arrow-cost"></span></th>
+            <th>Next Yr Trend</th>
+            <th class="sortable" onclick="sortRosterBy('value')">Market Value<span class="arrow" id="arrow-value"></span></th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="rosterBody"></tbody>
+      </table>
+    </div>
+    <div id="rosterStatus" class="subnote" style="margin:10px 0 0;"></div>
+  </section>
+
+  <!-- PICKS TAB -->
+  <section id="tab-picks" class="tab-panel">
+    <div class="section-title">Draft Picks</div>
+    <p class="subnote">The 2026 draft order, plus every pick already on the books for 2027&ndash;2029.</p>
+
+    <div class="toolbar">
+      <select id="picksTeamFilter" onchange="renderPicksTable()"><option value="">All teams</option></select>
+      <select id="picksYearFilter" onchange="renderPicksTable()"><option value="">All years</option></select>
+    </div>
+
+    <div class="section-title" style="font-size:20px;">Picks by Round</div>
+    <div id="picksPivot"></div>
+
+    <div class="section-title" style="font-size:20px; margin-top:28px;">Full Pick List</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Team</th><th>Year</th><th>Round</th><th>Note</th></tr></thead>
+        <tbody id="picksBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TRADE FINDER TAB -->
+  <section id="tab-trade" class="tab-panel">
+    <div class="section-title">Trade Finder</div>
+    <p class="subnote">Not a trade builder &mdash; a way to spot opportunities. Anyone you're not keeping goes back into the draft pool, so it's worth shopping before you lose them for nothing.</p>
+
+    <div class="section-title" style="font-size:22px;">Team Breakdowns</div>
+    <p class="subnote">An AI-written take on each team's best <i>keeper options</i> heading into the draft &mdash; nobody's actually picked their keepers yet, so this looks at the whole roster, not just who was kept last year. It calls out teams sitting on more good options than they have slots for, and who they should be trading those extras to. Grounded in the actual rosters, values and picks on this page; treat it as a conversation starter, not gospel.</p>
+    <div class="toolbar">
+      <select id="breakdownTeamSelect" onchange="renderTeamBreakdown()"><option value="">Choose a team&hellip;</option></select>
+    </div>
+    <div id="breakdownContent" class="card" style="line-height:1.7;"></div>
+
+    <div class="section-title" style="font-size:22px; margin-top:32px;">League Player Search</div>
+    <p class="subnote">Who's got who &mdash; search any player across all 14 rosters.</p>
+    <input id="finderSearch" type="text" placeholder="Search a player name&hellip;" oninput="renderFinderSearch()" style="width:100%; max-width:360px;">
+    <div id="finderSearchResults" style="margin-top:10px;"></div>
+
+    <div class="section-title" style="font-size:22px; margin-top:32px;">Similar Value Finder</div>
+    <p class="subnote">Pick a player &mdash; see who else sits at roughly the same trade value. Uses KTC market value where available, falling back to keeper cost otherwise.</p>
+    <input id="similarSearch" type="text" placeholder="Find a player to compare&hellip;" oninput="renderSimilarSearch()" style="width:100%; max-width:360px;">
+    <div id="similarSearchResults" style="margin-top:10px;"></div>
+    <div id="similarValueResults" style="margin-top:10px;"></div>
+
+    <div class="section-title" style="font-size:22px; margin-top:32px;">Keep Planner</div>
+    <p class="subnote">Pick your team and check off up to 2 keepers to see what each would cost.</p>
+    <div class="toolbar">
+      <select id="plannerTeamSelect" onchange="renderKeepPlanner()"><option value="">Choose your team&hellip;</option></select>
+    </div>
+    <div id="plannerContent"></div>
+  </section>
+
+  <footer>#ELITE Offseason HQ &middot; built for the offseason ahead of the 2026 draft</footer>
+</div>
+
+<script>
+const SEED_ROSTER = {{SEED_ROSTER}};
+const SEED_PICKS = {{SEED_PICKS}};
+const TEAM_NOTES = {{TEAM_NOTES}};
+
+let roster = JSON.parse(JSON.stringify(SEED_ROSTER));
+let picks = JSON.parse(JSON.stringify(SEED_PICKS));
+
+const POS_ORDER = ['QB','RB','WR','TE','D'];
+
+function isKeeper(desig){
+  return desig === 'K1' || desig === 'K2';
+}
+function badge(desig){
+  return isKeeper(desig) ? '<span class="badge b-keeper">KEEPER</span>' : '<span class="badge b-none">NONE</span>';
+}
+function rookieTag(row){
+  return row.rookie ? '<span class="badge b-r">R</span>' : '';
+}
+function posClass(pos){
+  return POS_ORDER.includes(pos) ? 'pos-'+pos : '';
+}
+function posLabel(pos){
+  return pos === 'D' ? 'D/ST' : pos;
+}
+function fmtValue(v){
+  return (v === null || v === undefined) ? '&mdash;' : v.toLocaleString();
+}
+
+function computeKeeper(row){
+  const desig = row.designation || 'none';
+  const cost = row.round;
+  const trend = desig === 'none' ? '\u2248 &minus;1 rd next yr' : desig === 'K1' ? '\u2248 &minus;2 rd jump next yr' : '\u2248 &minus;2 rd/yr while kept';
+  return { eligible:true, cost, trend };
+}
+
+/* Approximate current KTC trade value of an actual rookie pick at each round.
+   Rounds 1-4 are averaged from real KTC-listed picks (2026/2027 Early/Mid/Late);
+   rounds 5+ aren't priced distinctly by the market, so they're extrapolated on a decay curve. */
+const ROUND_VALUE = {1:5411,2:3248,3:2349,4:1631,5:1100,6:850,7:650,8:500,9:400,10:320,11:260,12:210,13:170,14:140};
+
+function valueRatio(row){
+  if(row.ktcValue == null || !row.round || !ROUND_VALUE[row.round]) return null;
+  return row.ktcValue / ROUND_VALUE[row.round];
+}
+function valueTag(ratio){
+  if(ratio == null) return null;
+  if(ratio < 1) return {label:'Overpay', cls:'val-overpay'};
+  if(ratio < 3) return {label:'Fair Value', cls:'val-fair'};
+  if(ratio < 7) return {label:'Good Value', cls:'val-good'};
+  return {label:'Elite Value', cls:'val-elite'};
+}
+function valueBadge(row){
+  const tag = valueTag(valueRatio(row));
+  if(!tag) return '<span class="badge b-none">&mdash;</span>';
+  return `<span class="badge ${tag.cls}">${tag.label}</span>`;
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'trade') renderTradeFinderTab();
+    if(btn.dataset.tab === 'overview') populateOverviewTeamSelect();
+  });
+});
+
+/* ---------- Theme ---------- */
+const THEMES = ['auto','light','dark'];
+function getStoredTheme(){
+  try{ return localStorage.getItem('elite-hq-theme') || 'auto'; } catch(e){ return 'auto'; }
+}
+function applyTheme(theme){
+  const root = document.documentElement;
+  if(theme === 'auto'){ root.removeAttribute('data-theme'); }
+  else{ root.setAttribute('data-theme', theme); }
+  document.getElementById('themeBtn').textContent = 'Theme: ' + theme.charAt(0).toUpperCase() + theme.slice(1);
+  try{ localStorage.setItem('elite-hq-theme', theme); } catch(e){}
+}
+function cycleTheme(){
+  const cur = getStoredTheme();
+  const next = THEMES[(THEMES.indexOf(cur)+1) % THEMES.length];
+  applyTheme(next);
+}
+applyTheme(getStoredTheme());
+
+/* ---------- Roster table ---------- */
+function populateTeamFilter(){
+  const sel = document.getElementById('teamFilter');
+  const current = sel.value;
+  const teams = [...new Set(roster.map(r=>r.team).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All teams</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  sel.value = current;
+}
+
+let rosterSort = {field: null, dir: 1};
+function sortRosterBy(field){
+  if(rosterSort.field !== field){ rosterSort.field = field; rosterSort.dir = 1; }
+  else if(rosterSort.dir === 1){ rosterSort.dir = -1; }
+  else { rosterSort.field = null; rosterSort.dir = 1; }
+  renderRosterTable();
+}
+function clearRosterSort(){
+  rosterSort = {field: null, dir: 1};
+  renderRosterTable();
+}
+function updateSortUI(){
+  ['cost','value'].forEach(f=>{
+    const arrow = document.getElementById('arrow-'+f);
+    const th = arrow ? arrow.parentElement : null;
+    if(!th) return;
+    if(rosterSort.field === f){
+      th.classList.add('active');
+      arrow.textContent = rosterSort.dir === 1 ? ' \u25B2' : ' \u25BC';
+    } else {
+      th.classList.remove('active');
+      arrow.textContent = '';
+    }
+  });
+  const status = document.getElementById('sortStatus');
+  if(rosterSort.field){
+    const label = rosterSort.field === 'cost' ? 'keeper cost' : 'market value';
+    status.innerHTML = `Sorted by ${label} (${rosterSort.dir === 1 ? 'low to high' : 'high to low'}). <span class="clear-sort" onclick="clearRosterSort()">Clear sort</span>`;
+  } else {
+    status.innerHTML = '';
+  }
+}
+
+function renderValueRankings(){
+  const body = document.getElementById('valueRankBody');
+  const ranked = roster
+    .map(r => ({...r, ratio: valueRatio(r)}))
+    .filter(r => r.ratio != null)
+    .sort((a,b) => b.ratio - a.ratio)
+    .slice(0, 30);
+
+  body.innerHTML = ranked.map((r, i) => {
+    const pc = posClass(r.pos);
+    return `<tr>
+      <td class="cost-cell">${i+1}</td>
+      <td>${r.player}</td>
+      <td><span class="pos-tag ${pc}">${posLabel(r.pos)}</span></td>
+      <td class="note-cell">${r.team}</td>
+      <td>${badge(r.designation)}</td>
+      <td><span class="cost-cell cost-ok">Rd ${r.round}</span></td>
+      <td class="val-cell">${fmtValue(r.ktcValue)}</td>
+      <td>${valueBadge(r)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty-hint" style="border:none;">No players with a known market value yet.</td></tr>';
+}
+
+function renderRosterTable(){
+  populateTeamFilter();
+  const body = document.getElementById('rosterBody');
+  const searchVal = (document.getElementById('search').value || '').toLowerCase();
+  const teamVal = document.getElementById('teamFilter').value;
+  const posVal = document.getElementById('posFilter').value;
+  const rookieOnly = document.getElementById('rookieOnlyFilter').checked;
+  body.innerHTML = '';
+
+  let rows = [];
+  roster.forEach((row, i) => {
+    if(teamVal && row.team !== teamVal) return;
+    if(posVal && row.pos !== posVal) return;
+    if(rookieOnly && !row.rookie) return;
+    if(searchVal && !((row.player||'').toLowerCase().includes(searchVal) || (row.team||'').toLowerCase().includes(searchVal))) return;
+    rows.push(row);
+  });
+
+  if(rosterSort.field === 'cost'){
+    rows.sort((a,b) => (computeKeeper(a).cost - computeKeeper(b).cost) * rosterSort.dir);
+  } else if(rosterSort.field === 'value'){
+    rows.sort((a,b) => {
+      const va = a.ktcValue, vb = b.ktcValue;
+      if(va === null && vb === null) return 0;
+      if(va === null) return 1;
+      if(vb === null) return -1;
+      return (va - vb) * rosterSort.dir;
+    });
+  }
+
+  document.getElementById('rosterStatus').textContent = `Showing ${rows.length} of ${roster.length} players.`;
+
+  rows.forEach(row => {
+    const result = computeKeeper(row);
+    const pc = posClass(row.pos);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="pos-accent ${pc}">${row.team}</td>
+      <td><span class="pos-tag ${pc}">${posLabel(row.pos)}</span></td>
+      <td>${row.player} ${rookieTag(row)}</td>
+      <td class="note-cell">${row.acquired}</td>
+      <td>${badge(row.designation)}</td>
+      <td><span class="cost-cell cost-ok">Rd ${result.cost}</span></td>
+      <td class="note-cell">${result.trend}</td>
+      <td class="val-cell">${fmtValue(row.ktcValue)}</td>
+      <td>${valueBadge(row)}</td>
+    `;
+    body.appendChild(tr);
+  });
+  updateSortUI();
+}
+
+/* ---------- Picks ---------- */
+function populatePicksFilters(){
+  const teamSel = document.getElementById('picksTeamFilter');
+  const yearSel = document.getElementById('picksYearFilter');
+  const curTeam = teamSel.value, curYear = yearSel.value;
+  const teams = [...new Set(picks.map(p=>p.team).filter(Boolean))].sort();
+  const years = [...new Set(picks.map(p=>p.year))].sort();
+  teamSel.innerHTML = '<option value="">All teams</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  yearSel.innerHTML = '<option value="">All years</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(teams.includes(curTeam)) teamSel.value = curTeam;
+  if(years.map(String).includes(curYear)) yearSel.value = curYear;
+}
+
+function renderPicksPivot(){
+  const el = document.getElementById('picksPivot');
+  const teams = [...new Set(picks.map(p=>p.team).filter(Boolean))].sort();
+  const years = [...new Set(picks.map(p=>p.year))].sort();
+  const rounds = [...new Set(picks.map(p=>p.round))].sort((a,b)=>a-b);
+  if(!teams.length){ el.innerHTML = '<div class="empty-hint">No picks logged yet.</div>'; return; }
+
+  let html = '';
+  years.forEach(year => {
+    const roundTotals = {}; rounds.forEach(r=>roundTotals[r]=0);
+    let grandTotal = 0;
+    let rowsHTML = '';
+    teams.forEach(team => {
+      const teamYearPicks = picks.filter(p=>p.team===team && p.year===year);
+      let rowTotal = 0;
+      let cellsHTML = '';
+      rounds.forEach(r => {
+        const count = teamYearPicks.filter(p=>p.round===r).length;
+        roundTotals[r] += count;
+        rowTotal += count;
+        cellsHTML += `<td>${count || ''}</td>`;
+      });
+      grandTotal += rowTotal;
+      rowsHTML += `<tr><td>${team}</td>${cellsHTML}<td class="pivot-total">${rowTotal}</td></tr>`;
+    });
+    html += `<div class="pivot-year-label">${year}</div>
+      <div class="table-scroll"><table class="pivot-table">
+        <thead><tr><th>Team</th>${rounds.map(r=>`<th>${r}</th>`).join('')}<th>Total</th></tr></thead>
+        <tbody>${rowsHTML}
+          <tr class="pivot-league-total"><td>League Total</td>${rounds.map(r=>`<td>${roundTotals[r]}</td>`).join('')}<td>${grandTotal}</td></tr>
+        </tbody>
+      </table></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderPicksTable(){
+  populatePicksFilters();
+  const body = document.getElementById('picksBody');
+  const teamVal = document.getElementById('picksTeamFilter').value;
+  const yearVal = document.getElementById('picksYearFilter').value;
+  body.innerHTML = '';
+  picks
+    .filter(p => (!teamVal || p.team===teamVal) && (!yearVal || String(p.year)===String(yearVal)))
+    .sort((a,b)=> a.team.localeCompare(b.team) || a.year-b.year || a.round-b.round)
+    .forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.team}</td>
+        <td>${p.year}</td>
+        <td>Rd ${p.round}</td>
+        <td class="note-cell">${p.note||''}</td>
+      `;
+      body.appendChild(tr);
+    });
+  renderPicksPivot();
+}
+
+/* ---------- Team Overview ---------- */
+function populateOverviewTeamSelect(){
+  const sel = document.getElementById('overviewTeamSelect');
+  const current = sel.value;
+  const teams = [...new Set([...roster.map(r=>r.team), ...picks.map(p=>p.team)].filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Choose a team&hellip;</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(teams.includes(current)) sel.value = current;
+  renderTeamOverview();
+}
+
+function renderTeamOverview(){
+  const team = document.getElementById('overviewTeamSelect').value;
+  const content = document.getElementById('overviewContent');
+  if(!team){ content.innerHTML = '<div class="empty-hint">Pick a team above to see their full picture.</div>'; return; }
+
+  const teamRoster = roster.filter(r=>r.team===team);
+  const teamPicks = picks.filter(p=>p.team===team);
+  const acceleratedCount = teamRoster.filter(r=>r.designation === 'K2').length;
+  const years = [...new Set(teamPicks.map(p=>p.year))].sort();
+
+  const byPos = {};
+  teamRoster.forEach(r=>{
+    const p = r.pos || '\u2014';
+    if(!byPos[p]) byPos[p] = [];
+    byPos[p].push(r);
+  });
+  const posKeys = Object.keys(byPos).sort((a,b)=>{
+    const ia = POS_ORDER.indexOf(a)===-1?99:POS_ORDER.indexOf(a);
+    const ib = POS_ORDER.indexOf(b)===-1?99:POS_ORDER.indexOf(b);
+    return ia-ib;
+  });
+
+  content.innerHTML = `
+    <div class="overview-summary">
+      <div class="stat-box"><div class="stat-num">${teamRoster.length}</div><div class="stat-label">Roster Spots</div></div>
+      <div class="stat-box"><div class="stat-num">${acceleratedCount}</div><div class="stat-label">On Accelerated Cost</div></div>
+      <div class="stat-box"><div class="stat-num">${teamPicks.length}</div><div class="stat-label">Future Picks</div></div>
+    </div>
+
+    <div class="section-title" style="font-size:22px;">Roster</div>
+    ${posKeys.map(pos => `
+      <div class="pos-group">
+        <h4>${posLabel(pos)}</h4>
+        ${byPos[pos].map(r=>{
+          const kc = computeKeeper(r);
+          const costText = `Rd ${kc.cost} \u00b7 ${kc.trend}`;
+          return `<div class="overview-row">
+            <span class="oname">${r.player} ${rookieTag(r)}</span>
+            ${badge(r.designation)}
+            <span class="ocost">${costText}${r.ktcValue!=null ? ' &middot; value '+r.ktcValue.toLocaleString() : ''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('')}
+
+    <div class="section-title" style="font-size:22px;">Draft Picks</div>
+    <div class="picks-year-grid">
+      ${years.length ? years.map(y => {
+        const yPicks = teamPicks.filter(p=>p.year===y).sort((a,b)=>a.round-b.round);
+        return `
+          <div class="picks-year-card">
+            <h4>${y} &middot; ${yPicks.length} picks</h4>
+            ${yPicks.map(p=>`<span class="pick-chip">Rd ${p.round}${p.note?` <span class="via">${p.note}</span>`:''}</span>`).join('')}
+          </div>
+        `;
+      }).join('') : '<div class="empty-hint">No picks logged for this team yet.</div>'}
+    </div>
+  `;
+}
+
+/* ---------- Trade Finder ---------- */
+function renderFinderSearch(){
+  const q = (document.getElementById('finderSearch').value || '').trim().toLowerCase();
+  const el = document.getElementById('finderSearchResults');
+  if(!q){ el.innerHTML = '<div class="empty-hint">Start typing a player name.</div>'; return; }
+  const matches = roster.filter(r => (r.player||'').toLowerCase().includes(q));
+  if(!matches.length){ el.innerHTML = '<div class="empty-hint">No one on a roster matches that.</div>'; return; }
+  el.innerHTML = matches.map(r => {
+    const kc = computeKeeper(r);
+    return `<div class="overview-row">
+      <span class="oname">${posLabel(r.pos)} ${r.player} ${rookieTag(r)}</span>
+      <span style="color:var(--ink-faint); font-size:12px;">${r.team}</span>
+      ${badge(r.designation)}
+      <span class="ocost">Rd ${kc.cost}${r.ktcValue!=null ? ' &middot; '+r.ktcValue.toLocaleString() : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSimilarSearch(){
+  const q = (document.getElementById('similarSearch').value || '').trim().toLowerCase();
+  const el = document.getElementById('similarSearchResults');
+  document.getElementById('similarValueResults').innerHTML = '';
+  if(!q){ el.innerHTML = ''; return; }
+  const matches = roster.map((r,i)=>({...r, idx:i})).filter(r => (r.player||'').toLowerCase().includes(q));
+  if(!matches.length){ el.innerHTML = '<div class="empty-hint">No one matches that.</div>'; return; }
+  el.innerHTML = matches.slice(0,15).map(r => `
+    <span class="pick-chip clickable" onclick="selectSimilarPlayer(${r.idx})">${r.player} <span style="color:var(--ink-faint);">(${r.team})</span></span>
+  `).join(' ');
+}
+
+function selectSimilarPlayer(idx){
+  const player = roster[idx];
+  const el = document.getElementById('similarValueResults');
+  const useValue = player.ktcValue !== null && player.ktcValue !== undefined;
+  const candidates = roster.map((r,i)=>({...r, idx:i})).filter(r => r.idx !== idx && r.team !== player.team);
+
+  let scored;
+  if(useValue){
+    scored = candidates.filter(r => r.ktcValue !== null && r.ktcValue !== undefined)
+      .map(r => ({...r, diff: Math.abs(r.ktcValue - player.ktcValue)}))
+      .sort((a,b) => a.diff - b.diff)
+      .slice(0, 10);
+  } else {
+    const cost0 = computeKeeper(player).cost || 0;
+    scored = candidates
+      .map(r => ({...r, diff: Math.abs(computeKeeper(r).cost - cost0)}))
+      .sort((a,b) => a.diff - b.diff)
+      .slice(0, 10);
+  }
+
+  const headerValue = useValue ? `market value ${player.ktcValue.toLocaleString()}` : `keeper cost Rd ${computeKeeper(player).cost}`;
+  el.innerHTML = `
+    <div class="pos-group">
+      <h4>Similar to ${player.player} (${player.team}) &mdash; ${headerValue}</h4>
+      ${!useValue ? '<p class="subnote" style="margin-top:0;">No market value on file for this player &mdash; comparing by keeper cost instead.</p>' : ''}
+      ${scored.length ? scored.map(r => {
+        const kc = computeKeeper(r);
+        const valText = useValue ? (r.ktcValue!=null ? 'market '+r.ktcValue.toLocaleString() : '\u2014') : `Rd ${kc.cost}`;
+        return `<div class="overview-row">
+          <span class="oname">${posLabel(r.pos)} ${r.player}</span>
+          <span style="color:var(--ink-faint); font-size:12px;">${r.team}</span>
+          ${badge(r.designation)}
+          <span class="ocost">${valText}</span>
+        </div>`;
+      }).join('') : '<div class="empty-hint">Nothing comparable on file yet.</div>'}
+    </div>
+  `;
+}
+
+function populatePlannerTeamSelect(){
+  const sel = document.getElementById('plannerTeamSelect');
+  const current = sel.value;
+  const teams = [...new Set(roster.map(r=>r.team).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Choose your team&hellip;</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(teams.includes(current)) sel.value = current;
+}
+
+let plannerKeeps = new Set();
+
+function renderKeepPlanner(){
+  const team = document.getElementById('plannerTeamSelect').value;
+  const el = document.getElementById('plannerContent');
+  plannerKeeps = new Set();
+  if(!team){ el.innerHTML = '<div class="empty-hint">Choose your team above.</div>'; return; }
+  renderKeepPlannerContent(team);
+}
+
+function toggleKeep(idx){
+  if(plannerKeeps.has(idx)) plannerKeeps.delete(idx);
+  else plannerKeeps.add(idx);
+  renderKeepPlannerContent(document.getElementById('plannerTeamSelect').value);
+}
+
+function renderKeepPlannerContent(team){
+  const el = document.getElementById('plannerContent');
+  const teamRoster = roster.map((r,i)=>({...r, idx:i})).filter(r=>r.team===team);
+
+  const rows = teamRoster.map(r => {
+    const kc = computeKeeper(r);
+    const checked = plannerKeeps.has(r.idx);
+    const atCap = plannerKeeps.size >= 2 && !checked;
+    return `<div class="overview-row">
+      <input type="checkbox" ${checked?'checked':''} ${atCap?'disabled':''} onchange="toggleKeep(${r.idx})">
+      <span class="oname">${posLabel(r.pos)} ${r.player}</span>
+      ${badge(r.designation)}
+      <span class="ocost">Rd ${kc.cost} to keep &middot; ${kc.trend}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="pos-group"><h4>${team} Roster &mdash; check who you're keeping</h4>${rows}</div>`;
+}
+
+function populateBreakdownTeamSelect(){
+  const sel = document.getElementById('breakdownTeamSelect');
+  const current = sel.value;
+  const teams = [...new Set(roster.map(r=>r.team).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Choose a team&hellip;</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(teams.includes(current)) sel.value = current;
+}
+
+function renderTeamBreakdown(){
+  const team = document.getElementById('breakdownTeamSelect').value;
+  const el = document.getElementById('breakdownContent');
+  if(!team){ el.innerHTML = '<span class="empty-hint" style="background:none; border:none; padding:0;">Choose a team above to read their breakdown.</span>'; return; }
+  const note = TEAM_NOTES[team];
+  el.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:8px;">${team}</div>` +
+    (note ? `<p style="margin:0; color:var(--ink-dim); font-size:14px;">${note}</p>` : '<span class="empty-hint" style="background:none; border:none; padding:0;">No breakdown written for this team yet.</span>');
+}
+
+function renderTradeFinderTab(){
+  populatePlannerTeamSelect();
+  populateBreakdownTeamSelect();
+}
+
+/* ---------- Init ---------- */
+renderValueRankings();
+renderRosterTable();
+renderPicksTable();
+</script>
+</body>
+</html>
