@@ -426,6 +426,11 @@ th{
 }
 td{ padding:9px 12px; border-bottom:1px solid var(--border-soft); vertical-align:middle; font-variant-numeric:tabular-nums; }
 tr:last-child td{ border-bottom:none; }
+.lean-table th, .lean-table td{ padding:9px 8px; }
+.lean-table td:nth-child(1){ min-width:120px; }
+.team-keeper-table td:first-child{ min-width:140px; }
+.team-keeper-table td:not(:first-child), .team-keeper-table th:not(:first-child){ text-align:center; white-space:nowrap; }
+.lean-table .note-cell{ display:flex; align-items:center; gap:6px; margin-top:2px; }
 tbody tr:hover{ background:var(--tile-hover); }
 th.sortable{ cursor:pointer; user-select:none; }
 th.sortable:hover{ color:var(--ink); }
@@ -549,6 +554,37 @@ th.sortable.active .arrow{ color:var(--red); }
 .results-detail{ margin-top:12px; }
 
 footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44px; font-family:'DM Mono',monospace; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 640px){
+  .wrap{ padding:16px 12px 50px; }
+  header{ flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:16px; margin-bottom:18px; }
+  h1{ font-size:38px; }
+  header p{ max-width:none; font-size:13.5px; }
+  .header-meta{ align-items:flex-start; text-align:left; flex-direction:row; align-items:center; gap:10px; }
+
+  .tabs{ gap:2px; padding:4px; }
+  .tab-btn{ padding:9px 8px; font-size:11px; }
+
+  .section-title{ font-size:22px; }
+  .card{ padding:13px 14px; }
+
+  input, select, button{ min-height:42px; }
+  .toolbar{ gap:8px; }
+  .toolbar input, .toolbar select{ flex:1 1 140px; }
+
+  table{ font-size:12px; }
+  th{ font-size:9.5px; padding:8px 7px; }
+  td{ padding:8px 7px; }
+  .lean-table td:nth-child(1){ min-width:100px; }
+  .team-keeper-table td:first-child{ min-width:110px; }
+
+  .overview-summary{ grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .stat-box{ padding:10px 8px; }
+  .stat-box .stat-num{ font-size:26px; }
+
+  .settings-grid{ grid-template-columns:repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
@@ -610,15 +646,15 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <details class="rule">
       <summary>How We Score Keeper Value</summary>
       <div class="rule-body">
-        The <b>Value</b> tag compares what a player is actually worth on today's trade market (his KTC value) against what an <b>actual rookie draft pick in that same round</b> is worth on that same market right now. The bar to clear isn't just "worth more than the pick" &mdash; it's worth a meaningful <i>discount</i> over just drafting fresh there. A player who's only worth about what that pick is worth gives you no real edge: you could take the same value by drafting at that spot and use your keeper slot &mdash; there are only two &mdash; on someone actually cheap.
+        The <b>Value</b> tag compares a player's <b>keeper round</b> against his <b>ADP</b> &mdash; where he'd actually go in a fresh startup draft today. ADP here comes from KeepTradeCut's crowdsourced Superflex / .5 PPR dynasty rankings, converted into a round.pick using this league's 14 teams (rank 15 &rarr; the 2nd pick of round 2, etc.). The difference between the two, in rounds, is the whole story: keep him at round 11 when he'd actually go in round 1, and that's a 10-round discount. Keep him at round 1 when his real ADP is also round 1, and you've gained nothing &mdash; you could've just drafted him fresh and used the keeper slot on someone actually cheap.
         <ul>
-          <li><b>Elite Value</b> &mdash; worth 7&times; or more what the pick costs.</li>
-          <li><b>Good Value</b> &mdash; worth 3&ndash;7&times; the pick.</li>
-          <li><b>Fair Value</b> &mdash; worth 1.5&ndash;3&times; the pick.</li>
-          <li><b>No Real Edge</b> &mdash; worth 1&ndash;1.5&times; the pick. Technically not a loss, but not a discount either.</li>
-          <li><b>Overpay</b> &mdash; worth less than the pick you're spending to keep him.</li>
+          <li><b>Elite Value</b> &mdash; 5+ rounds cheaper than his ADP.</li>
+          <li><b>Good Value</b> &mdash; 3&ndash;4 rounds cheaper.</li>
+          <li><b>Fair Value</b> &mdash; 1&ndash;2 rounds cheaper.</li>
+          <li><b>No Real Edge</b> &mdash; roughly break-even with his ADP.</li>
+          <li><b>Overpay</b> &mdash; costs more than his ADP says he's worth. Common for aging veterans whose keeper cost hasn't caught up to their decline.</li>
         </ul>
-        In practice, this is why a <b>round-one keeper cost is almost never worth it</b>: a first-round pick is already the most expensive thing you can spend, and even a very good player rarely clears it by enough to matter. Every round-one-cost player on this roster lands in Overpay or No Real Edge &mdash; none of them are an actual discount. Pick values for rounds 5 and later aren't priced distinctly by the market (they trade for very little), so those are estimated on a smooth curve rather than pulled directly from KTC.
+        This is also why a <b>round-one keeper cost rarely pays off</b>: his ADP is very likely round one too, so there's no discount to be had. Players without an ADP (outside KTC's top 500 &mdash; mostly deep bench and D/ST) show no Value tag rather than a guess.
       </div>
     </details>
 
@@ -633,7 +669,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     </div>
 
     <div class="banner data-note" style="margin-top:22px;">
-      <b>About this data:</b> rosters, keeper costs and draft picks are a snapshot pulled directly from MFL League #31492, refreshed on request. Player market values (Trade Finder tab) are a separate snapshot from KeepTradeCut's crowdsourced dynasty rankings (Superflex, .5 PPR) &mdash; matched for most rostered players; a handful of deep-roster names and all D/ST simply don't carry a market value. Ask any time and both can be refreshed.
+      <b>About this data:</b> rosters, keeper costs and draft picks are a snapshot pulled directly from MFL League #31492, refreshed on request. Market values and ADP are a separate snapshot from KeepTradeCut's crowdsourced dynasty rankings (Superflex, .5 PPR) &mdash; matched for most rostered players; a handful of deep-roster names and all D/ST simply don't carry one. Ask any time and both can be refreshed.
     </div>
   </section>
 
@@ -654,18 +690,15 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <p class="subnote">All 14 rosters with keeper cost math built in.</p>
 
     <div class="section-title" style="font-size:22px;">Best Keeper Value, Leaguewide</div>
-    <p class="subnote">The top 30 rostered players by keeper value, across all 14 teams &mdash; not grouped by position. Nobody's keeper picks for the upcoming draft are locked in yet, so this covers everyone, not just last season's keepers. See "How We Score Keeper Value" on the Rules tab for how it's calculated.</p>
+    <p class="subnote">The top 30 rostered players by keeper value, across all 14 teams &mdash; not grouped by position. ADP is KeepTradeCut's crowdsourced Superflex / .5 PPR dynasty rank, converted to a round.pick for this league's 14 teams. Nobody's keeper picks for the upcoming draft are locked in yet, so this covers everyone, not just last season's keepers. See "How We Score Keeper Value" on the Rules tab for how it's calculated.</p>
     <div class="table-scroll" style="margin-bottom:30px;">
-      <table>
+      <table class="lean-table">
         <thead>
           <tr>
-            <th>Rank</th>
+            <th>#</th>
             <th>Player</th>
-            <th>Pos</th>
-            <th>Team</th>
-            <th>Kept Last Year?</th>
-            <th>Keeper Cost</th>
-            <th>Market Value</th>
+            <th>Kept Rd</th>
+            <th>ADP</th>
             <th>Value</th>
           </tr>
         </thead>
@@ -689,17 +722,15 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <div id="sortStatus" style="min-height:16px; margin-bottom:8px;"></div>
 
     <div class="table-scroll">
-      <table>
+      <table class="lean-table">
         <thead>
           <tr>
             <th class="sortable" onclick="sortRosterBy('team')">Team<span class="arrow" id="arrow-team"></span></th>
             <th class="sortable" onclick="sortRosterBy('pos')">Pos<span class="arrow" id="arrow-pos"></span></th>
             <th>Player</th>
-            <th>Acquired</th>
-            <th>Kept Last Year?</th>
-            <th class="sortable" onclick="sortRosterBy('cost')">Keeper Cost<span class="arrow" id="arrow-cost"></span></th>
-            <th>Next Yr Trend</th>
-            <th class="sortable" onclick="sortRosterBy('value')">Market Value<span class="arrow" id="arrow-value"></span></th>
+            <th>Kept?</th>
+            <th class="sortable" onclick="sortRosterBy('cost')">Kept Rd<span class="arrow" id="arrow-cost"></span></th>
+            <th class="sortable" onclick="sortRosterBy('adp')">ADP<span class="arrow" id="arrow-adp"></span></th>
             <th class="sortable" onclick="sortRosterBy('tag')">Value<span class="arrow" id="arrow-tag"></span></th>
           </tr>
         </thead>
@@ -805,27 +836,38 @@ function computeKeeper(row){
   return { eligible:true, cost, trend };
 }
 
-/* Approximate current KTC trade value of an actual rookie pick at each round.
-   Rounds 1-4 are averaged from real KTC-listed picks (2026/2027 Early/Mid/Late);
-   rounds 5+ aren't priced distinctly by the market, so they're extrapolated on a decay curve. */
-const ROUND_VALUE = {1:5411,2:3248,3:2349,4:1631,5:1100,6:850,7:650,8:500,9:400,10:320,11:260,12:210,13:170,14:140};
-
-function valueRatio(row){
-  if(row.ktcValue == null || !row.round || !ROUND_VALUE[row.round]) return null;
-  return row.ktcValue / ROUND_VALUE[row.round];
+/* ADP is KeepTradeCut's crowdsourced Superflex / .5 PPR dynasty rank, translated into a
+   round.pick using this league's actual team count \u2014 i.e. "where he'd go in a startup draft
+   with these 14 teams today." That's directly comparable to the keeper round he actually costs. */
+const LEAGUE_TEAMS = 14;
+function adpInfo(row){
+  if(row.adpRank == null) return null;
+  const round = Math.ceil(row.adpRank / LEAGUE_TEAMS);
+  const pick = ((row.adpRank - 1) % LEAGUE_TEAMS) + 1;
+  return { rank: row.adpRank, round, pick, label: round + '.' + String(pick).padStart(2,'0') };
 }
-function valueTag(ratio){
-  if(ratio == null) return null;
-  if(ratio < 1) return {label:'Overpay', cls:'val-overpay'};
-  if(ratio < 1.5) return {label:'No Real Edge', cls:'val-noedge'};
-  if(ratio < 3) return {label:'Fair Value', cls:'val-fair'};
-  if(ratio < 7) return {label:'Good Value', cls:'val-good'};
+function roundsSaved(row){
+  const adp = adpInfo(row);
+  if(!adp || !row.round) return null;
+  return row.round - adp.round;
+}
+function valueTag(saved){
+  if(saved == null) return null;
+  if(saved <= -2) return {label:'Overpay', cls:'val-overpay'};
+  if(saved <= 0) return {label:'No Real Edge', cls:'val-noedge'};
+  if(saved <= 2) return {label:'Fair Value', cls:'val-fair'};
+  if(saved <= 4) return {label:'Good Value', cls:'val-good'};
   return {label:'Elite Value', cls:'val-elite'};
 }
 function valueBadge(row){
-  const tag = valueTag(valueRatio(row));
+  const tag = valueTag(roundsSaved(row));
   if(!tag) return '<span class="badge b-none">&mdash;</span>';
   return `<span class="badge ${tag.cls}">${tag.label}</span>`;
+}
+function fmtSaved(saved){
+  if(saved == null) return '&mdash;';
+  if(saved === 0) return 'even';
+  return (saved > 0 ? '+' : '') + saved + ' rd' + (Math.abs(saved)===1?'':'s');
 }
 
 /* ---------- Tabs ---------- */
@@ -879,7 +921,7 @@ function clearRosterSort(){
   rosterSort = {field: null, dir: 1};
   renderRosterTable();
 }
-const SORT_LABELS = {team:'team', pos:'position', cost:'keeper cost', value:'market value', tag:'value tier'};
+const SORT_LABELS = {team:'team', pos:'position', cost:'keeper cost', adp:'ADP', tag:'value tier'};
 function updateSortUI(){
   Object.keys(SORT_LABELS).forEach(f=>{
     const arrow = document.getElementById('arrow-'+f);
@@ -908,24 +950,25 @@ function updateSortUI(){
 function renderValueRankings(){
   const body = document.getElementById('valueRankBody');
   const ranked = roster
-    .map(r => ({...r, ratio: valueRatio(r)}))
-    .filter(r => r.ratio != null)
-    .sort((a,b) => b.ratio - a.ratio)
+    .map(r => ({...r, saved: roundsSaved(r)}))
+    .filter(r => r.saved != null)
+    .sort((a,b) => b.saved - a.saved)
     .slice(0, 30);
 
   body.innerHTML = ranked.map((r, i) => {
     const pc = posClass(r.pos);
+    const adp = adpInfo(r);
     return `<tr>
       <td class="cost-cell">${i+1}</td>
-      <td>${r.player}</td>
-      <td><span class="pos-tag ${pc}">${posLabel(r.pos)}</span></td>
-      <td class="note-cell">${r.team}</td>
-      <td>${badge(r.designation)}</td>
+      <td>
+        <div>${r.player} ${rookieTag(r)}</div>
+        <div class="note-cell"><span class="pos-tag ${pc}">${posLabel(r.pos)}</span> ${r.team}</div>
+      </td>
       <td><span class="cost-cell cost-ok">Rd ${r.round}</span></td>
-      <td class="val-cell">${fmtValue(r.ktcValue)}</td>
+      <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
       <td>${valueBadge(r)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="8" class="empty-hint" style="border:none;">No players with a known market value yet.</td></tr>';
+  }).join('') || '<tr><td colspan="5" class="empty-hint" style="border:none;">No players with a known ADP yet.</td></tr>';
 }
 
 function renderRosterTable(){
@@ -952,18 +995,18 @@ function renderRosterTable(){
     rows.sort((a,b) => posLabel(a.pos).localeCompare(posLabel(b.pos)) * rosterSort.dir || a.player.localeCompare(b.player));
   } else if(rosterSort.field === 'cost'){
     rows.sort((a,b) => (computeKeeper(a).cost - computeKeeper(b).cost) * rosterSort.dir);
-  } else if(rosterSort.field === 'value'){
+  } else if(rosterSort.field === 'adp'){
     rows.sort((a,b) => {
-      const va = a.ktcValue, vb = b.ktcValue;
-      if(va === null && vb === null) return 0;
-      if(va === null) return 1;
-      if(vb === null) return -1;
-      return (va - vb) * rosterSort.dir;
+      const aa = adpInfo(a), ab = adpInfo(b);
+      if(!aa && !ab) return 0;
+      if(!aa) return 1;
+      if(!ab) return -1;
+      return (aa.rank - ab.rank) * rosterSort.dir;
     });
   } else if(rosterSort.field === 'tag'){
     const TAG_RANK = {'Overpay':0, 'No Real Edge':1, 'Fair Value':2, 'Good Value':3, 'Elite Value':4};
     rows.sort((a,b) => {
-      const ta = valueTag(valueRatio(a)), tb = valueTag(valueRatio(b));
+      const ta = valueTag(roundsSaved(a)), tb = valueTag(roundsSaved(b));
       const ra = ta ? TAG_RANK[ta.label] : -1;
       const rb = tb ? TAG_RANK[tb.label] : -1;
       return (ra - rb) * rosterSort.dir;
@@ -975,16 +1018,15 @@ function renderRosterTable(){
   rows.forEach(row => {
     const result = computeKeeper(row);
     const pc = posClass(row.pos);
+    const adp = adpInfo(row);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="pos-accent ${pc}">${row.team}</td>
+      <td class="pos-accent ${pc} note-cell">${row.team}</td>
       <td><span class="pos-tag ${pc}">${posLabel(row.pos)}</span></td>
       <td>${row.player} ${rookieTag(row)}</td>
-      <td class="note-cell">${row.acquired}</td>
       <td>${badge(row.designation)}</td>
       <td><span class="cost-cell cost-ok">Rd ${result.cost}</span></td>
-      <td class="note-cell">${result.trend}</td>
-      <td class="val-cell">${fmtValue(row.ktcValue)}</td>
+      <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
       <td>${valueBadge(row)}</td>
     `;
     body.appendChild(tr);
@@ -1086,17 +1128,13 @@ function renderTeamOverview(){
   const acceleratedCount = teamRoster.filter(r=>r.designation === 'K2').length;
   const years = [...new Set(teamPicks.map(p=>p.year))].sort();
 
-  const byPos = {};
-  teamRoster.forEach(r=>{
-    const p = r.pos || '\u2014';
-    if(!byPos[p]) byPos[p] = [];
-    byPos[p].push(r);
-  });
-  const posKeys = Object.keys(byPos).sort((a,b)=>{
-    const ia = POS_ORDER.indexOf(a)===-1?99:POS_ORDER.indexOf(a);
-    const ib = POS_ORDER.indexOf(b)===-1?99:POS_ORDER.indexOf(b);
-    return ia-ib;
-  });
+  const ranked = teamRoster.map(r=>({...r, saved: roundsSaved(r)}))
+    .sort((a,b)=>{
+      if(a.saved==null && b.saved==null) return 0;
+      if(a.saved==null) return 1;
+      if(b.saved==null) return -1;
+      return b.saved - a.saved;
+    });
 
   content.innerHTML = `
     <div class="overview-summary">
@@ -1105,21 +1143,28 @@ function renderTeamOverview(){
       <div class="stat-box"><div class="stat-num">${teamPicks.length}</div><div class="stat-label">Future Picks</div></div>
     </div>
 
-    <div class="section-title" style="font-size:22px;">Roster</div>
-    ${posKeys.map(pos => `
-      <div class="pos-group">
-        <h4>${posLabel(pos)}</h4>
-        ${byPos[pos].map(r=>{
-          const kc = computeKeeper(r);
-          const costText = `Rd ${kc.cost} \u00b7 ${kc.trend}`;
-          return `<div class="overview-row">
-            <span class="oname">${r.player} ${rookieTag(r)}</span>
-            ${badge(r.designation)}
-            <span class="ocost">${costText}${r.ktcValue!=null ? ' &middot; value '+r.ktcValue.toLocaleString() : ''}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    `).join('')}
+    <div class="section-title" style="font-size:22px;">Keeper Board</div>
+    <p class="subnote">Every rostered player, best value first &mdash; not just who was kept last year. ADP is where he'd actually go in a fresh Superflex/.5 PPR startup draft with these 14 teams.</p>
+    <div class="table-scroll">
+      <table class="lean-table team-keeper-table">
+        <thead><tr><th>Player</th><th>Kept Rd</th><th>ADP</th><th>Value</th></tr></thead>
+        <tbody>
+          ${ranked.map(r=>{
+            const pc = posClass(r.pos);
+            const adp = adpInfo(r);
+            return `<tr>
+              <td>
+                <div>${r.player} ${rookieTag(r)}</div>
+                <div class="note-cell"><span class="pos-tag ${pc}">${posLabel(r.pos)}</span> ${badge(r.designation)}</div>
+              </td>
+              <td><span class="cost-cell cost-ok">Rd ${r.round}</span></td>
+              <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
+              <td>${valueBadge(r)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
 
     <div class="section-title" style="font-size:22px;">Draft Picks</div>
     <div class="picks-year-grid">
@@ -1231,21 +1276,28 @@ function toggleKeep(idx){
 
 function renderKeepPlannerContent(team){
   const el = document.getElementById('plannerContent');
-  const teamRoster = roster.map((r,i)=>({...r, idx:i})).filter(r=>r.team===team);
+  const teamRoster = roster.map((r,i)=>({...r, idx:i, saved: roundsSaved(r)})).filter(r=>r.team===team)
+    .sort((a,b)=>{
+      if(a.saved==null && b.saved==null) return 0;
+      if(a.saved==null) return 1;
+      if(b.saved==null) return -1;
+      return b.saved - a.saved;
+    });
 
   const rows = teamRoster.map(r => {
     const kc = computeKeeper(r);
+    const adp = adpInfo(r);
     const checked = plannerKeeps.has(r.idx);
     const atCap = plannerKeeps.size >= 2 && !checked;
     return `<div class="overview-row">
       <input type="checkbox" ${checked?'checked':''} ${atCap?'disabled':''} onchange="toggleKeep(${r.idx})">
       <span class="oname">${posLabel(r.pos)} ${r.player}</span>
       ${badge(r.designation)}
-      <span class="ocost">Rd ${kc.cost} to keep &middot; ${kc.trend}</span>
+      <span class="ocost">Rd ${kc.cost} &middot; ADP ${adp ? adp.label : '&mdash;'} ${valueBadge(r)}</span>
     </div>`;
   }).join('');
 
-  el.innerHTML = `<div class="pos-group"><h4>${team} Roster &mdash; check who you're keeping</h4>${rows}</div>`;
+  el.innerHTML = `<div class="pos-group"><h4>${team} Roster &mdash; sorted by value, check who you're keeping</h4>${rows}</div>`;
 }
 
 function populateBreakdownTeamSelect(){

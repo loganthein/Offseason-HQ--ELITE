@@ -1176,54 +1176,67 @@
   },
   "christian kirk": {
     "name": "christian kirk",
-    "value": 1832
+    "value": 1832,
+    "rank": "301"
   },
   "calvin ridley": {
     "name": "calvin ridley",
-    "value": 1747
+    "value": 1747,
+    "rank": "308"
   },
   "evan engram": {
     "name": "evan engram",
-    "value": 1736
+    "value": 1736,
+    "rank": "311"
   },
   "cedric tillman": {
     "name": "cedric tillman",
-    "value": 1719
+    "value": 1719,
+    "rank": "315"
   },
   "brandon aiyuk": {
     "name": "brandon aiyuk",
-    "value": 1484
+    "value": 1484,
+    "rank": "348"
   },
   "noah fant": {
     "name": "noah fant",
-    "value": 1401
+    "value": 1401,
+    "rank": "360"
   },
   "tyreek hill": {
     "name": "tyreek hill",
-    "value": 1392
+    "value": 1392,
+    "rank": "361"
   },
   "isaac guerendo": {
     "name": "isaac guerendo",
-    "value": 1385
+    "value": 1385,
+    "rank": "364"
   },
   "devin singletary": {
     "name": "devin singletary",
-    "value": 1185
+    "value": 1185,
+    "rank": "399"
   },
   "keenan allen": {
     "name": "keenan allen",
-    "value": 1155
+    "value": 1155,
+    "rank": "406"
   },
   "marvin mims": {
     "name": "marvin mims",
-    "value": 2050
+    "value": 2050,
+    "rank": "269"
   },
   "dalton schultz": {
     "name": "dalton schultz",
-    "value": 2146
+    "value": 2146,
+    "rank": "255"
   },
   "kyle williams": {
     "name": "Kyle Williams",
-    "value": 2096
+    "value": 2096,
+    "rank": "260"
   }
 }
