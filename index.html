@@ -294,6 +294,7 @@ section{ margin-bottom:34px; }
 .val-elite{ background:var(--good-dim); color:var(--good-ink); border-color:var(--good-dim); }
 .val-good{ background:var(--good-dim); color:var(--good-ink); border-color:var(--good-dim); opacity:0.82; }
 .val-fair{ background:var(--warn-dim); color:var(--warn-ink); border-color:var(--warn-dim); }
+.val-noedge{ background:var(--border-soft); color:var(--ink-dim); border-color:var(--border-soft); }
 .val-overpay{ background:var(--red-dim); color:var(--red-ink); border-color:var(--red-dim); }
 
 /* ---------- Legend ---------- */
@@ -532,6 +533,13 @@ th.sortable.active .arrow{ color:var(--red); }
 .pivot-table td:first-child, .pivot-table th:first-child{ text-align:left; }
 .pivot-table .pivot-total{ color:var(--red); font-weight:600; }
 .pivot-table tr.pivot-league-total td{ color:var(--ink); font-family:'DM Mono',monospace; border-top:2px solid var(--border); background:var(--tile-hover); }
+.pivot-table .pivot-premium{ background:var(--red-dim); }
+.pivot-table th.pivot-premium{ color:var(--red-ink); }
+.pivot-table td.pivot-cell{ font-family:'DM Mono',monospace; }
+.pivot-table td.pivot-extra{ color:var(--blue-ink); font-weight:700; }
+.pivot-legend{ display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--ink-dim); margin:-6px 0 14px; }
+.pivot-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.pivot-legend .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; }
 .pivot-year-label{ font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--ink); margin:16px 0 6px; }
 .pivot-year-label:first-child{ margin-top:0; }
 
@@ -602,14 +610,15 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <details class="rule">
       <summary>How We Score Keeper Value</summary>
       <div class="rule-body">
-        The <b>Value</b> tag compares what a player is actually worth on today's trade market (his KTC value) against what an <b>actual rookie draft pick in that same round</b> is worth on that same market right now. If a player's own trade value comfortably beats the pick you're spending to keep him, that's a good keep; if it doesn't, you're paying up. Because keeper costs are set relative to where a player was drafted &mdash; not to his current trade value &mdash; most keepers in a league like this will price out as good value by design. That's normal. The tag is most useful for spotting the <i>rare true overpay</i> and for ranking keepers against each other, not as an absolute grade.
+        The <b>Value</b> tag compares what a player is actually worth on today's trade market (his KTC value) against what an <b>actual rookie draft pick in that same round</b> is worth on that same market right now. The bar to clear isn't just "worth more than the pick" &mdash; it's worth a meaningful <i>discount</i> over just drafting fresh there. A player who's only worth about what that pick is worth gives you no real edge: you could take the same value by drafting at that spot and use your keeper slot &mdash; there are only two &mdash; on someone actually cheap.
         <ul>
           <li><b>Elite Value</b> &mdash; worth 7&times; or more what the pick costs.</li>
           <li><b>Good Value</b> &mdash; worth 3&ndash;7&times; the pick.</li>
-          <li><b>Fair Value</b> &mdash; worth 1&ndash;3&times; the pick.</li>
+          <li><b>Fair Value</b> &mdash; worth 1.5&ndash;3&times; the pick.</li>
+          <li><b>No Real Edge</b> &mdash; worth 1&ndash;1.5&times; the pick. Technically not a loss, but not a discount either.</li>
           <li><b>Overpay</b> &mdash; worth less than the pick you're spending to keep him.</li>
         </ul>
-        Pick values for rounds 5 and later aren't priced distinctly by the market (they trade for very little), so those are estimated on a smooth curve rather than pulled directly from KTC.
+        In practice, this is why a <b>round-one keeper cost is almost never worth it</b>: a first-round pick is already the most expensive thing you can spend, and even a very good player rarely clears it by enough to matter. Every round-one-cost player on this roster lands in Overpay or No Real Edge &mdash; none of them are an actual discount. Pick values for rounds 5 and later aren't priced distinctly by the market (they trade for very little), so those are estimated on a smooth curve rather than pulled directly from KTC.
       </div>
     </details>
 
@@ -683,15 +692,15 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
       <table>
         <thead>
           <tr>
-            <th>Team</th>
-            <th>Pos</th>
+            <th class="sortable" onclick="sortRosterBy('team')">Team<span class="arrow" id="arrow-team"></span></th>
+            <th class="sortable" onclick="sortRosterBy('pos')">Pos<span class="arrow" id="arrow-pos"></span></th>
             <th>Player</th>
             <th>Acquired</th>
             <th>Kept Last Year?</th>
             <th class="sortable" onclick="sortRosterBy('cost')">Keeper Cost<span class="arrow" id="arrow-cost"></span></th>
             <th>Next Yr Trend</th>
             <th class="sortable" onclick="sortRosterBy('value')">Market Value<span class="arrow" id="arrow-value"></span></th>
-            <th>Value</th>
+            <th class="sortable" onclick="sortRosterBy('tag')">Value<span class="arrow" id="arrow-tag"></span></th>
           </tr>
         </thead>
         <tbody id="rosterBody"></tbody>
@@ -711,6 +720,10 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     </div>
 
     <div class="section-title" style="font-size:20px;">Picks by Round</div>
+    <div class="pivot-legend">
+      <span><span class="swatch" style="background:var(--red-dim);"></span> Round 1&ndash;2 (premium picks)</span>
+      <span><span class="swatch" style="background:var(--blue-dim); color:var(--blue-ink); font-weight:700;">2+</span> Extra pick in that round (via trade)</span>
+    </div>
     <div id="picksPivot"></div>
 
     <div class="section-title" style="font-size:20px; margin-top:28px;">Full Pick List</div>
@@ -804,6 +817,7 @@ function valueRatio(row){
 function valueTag(ratio){
   if(ratio == null) return null;
   if(ratio < 1) return {label:'Overpay', cls:'val-overpay'};
+  if(ratio < 1.5) return {label:'No Real Edge', cls:'val-noedge'};
   if(ratio < 3) return {label:'Fair Value', cls:'val-fair'};
   if(ratio < 7) return {label:'Good Value', cls:'val-good'};
   return {label:'Elite Value', cls:'val-elite'};
@@ -865,8 +879,9 @@ function clearRosterSort(){
   rosterSort = {field: null, dir: 1};
   renderRosterTable();
 }
+const SORT_LABELS = {team:'team', pos:'position', cost:'keeper cost', value:'market value', tag:'value tier'};
 function updateSortUI(){
-  ['cost','value'].forEach(f=>{
+  Object.keys(SORT_LABELS).forEach(f=>{
     const arrow = document.getElementById('arrow-'+f);
     const th = arrow ? arrow.parentElement : null;
     if(!th) return;
@@ -880,8 +895,11 @@ function updateSortUI(){
   });
   const status = document.getElementById('sortStatus');
   if(rosterSort.field){
-    const label = rosterSort.field === 'cost' ? 'keeper cost' : 'market value';
-    status.innerHTML = `Sorted by ${label} (${rosterSort.dir === 1 ? 'low to high' : 'high to low'}). <span class="clear-sort" onclick="clearRosterSort()">Clear sort</span>`;
+    const label = SORT_LABELS[rosterSort.field] || rosterSort.field;
+    const dirLabel = (rosterSort.field === 'team' || rosterSort.field === 'pos')
+      ? (rosterSort.dir === 1 ? 'A to Z' : 'Z to A')
+      : (rosterSort.dir === 1 ? 'low to high' : 'high to low');
+    status.innerHTML = `Sorted by ${label} (${dirLabel}). <span class="clear-sort" onclick="clearRosterSort()">Clear sort</span>`;
   } else {
     status.innerHTML = '';
   }
@@ -928,7 +946,11 @@ function renderRosterTable(){
     rows.push(row);
   });
 
-  if(rosterSort.field === 'cost'){
+  if(rosterSort.field === 'team'){
+    rows.sort((a,b) => a.team.localeCompare(b.team) * rosterSort.dir);
+  } else if(rosterSort.field === 'pos'){
+    rows.sort((a,b) => posLabel(a.pos).localeCompare(posLabel(b.pos)) * rosterSort.dir || a.player.localeCompare(b.player));
+  } else if(rosterSort.field === 'cost'){
     rows.sort((a,b) => (computeKeeper(a).cost - computeKeeper(b).cost) * rosterSort.dir);
   } else if(rosterSort.field === 'value'){
     rows.sort((a,b) => {
@@ -937,6 +959,14 @@ function renderRosterTable(){
       if(va === null) return 1;
       if(vb === null) return -1;
       return (va - vb) * rosterSort.dir;
+    });
+  } else if(rosterSort.field === 'tag'){
+    const TAG_RANK = {'Overpay':0, 'No Real Edge':1, 'Fair Value':2, 'Good Value':3, 'Elite Value':4};
+    rows.sort((a,b) => {
+      const ta = valueTag(valueRatio(a)), tb = valueTag(valueRatio(b));
+      const ra = ta ? TAG_RANK[ta.label] : -1;
+      const rb = tb ? TAG_RANK[tb.label] : -1;
+      return (ra - rb) * rosterSort.dir;
     });
   }
 
@@ -995,14 +1025,17 @@ function renderPicksPivot(){
         const count = teamYearPicks.filter(p=>p.round===r).length;
         roundTotals[r] += count;
         rowTotal += count;
-        cellsHTML += `<td>${count || ''}</td>`;
+        const cls = ['pivot-cell'];
+        if(r <= 2) cls.push('pivot-premium');
+        if(count >= 2) cls.push('pivot-extra');
+        cellsHTML += `<td class="${cls.join(' ')}">${count || ''}</td>`;
       });
       grandTotal += rowTotal;
       rowsHTML += `<tr><td>${team}</td>${cellsHTML}<td class="pivot-total">${rowTotal}</td></tr>`;
     });
     html += `<div class="pivot-year-label">${year}</div>
       <div class="table-scroll"><table class="pivot-table">
-        <thead><tr><th>Team</th>${rounds.map(r=>`<th>${r}</th>`).join('')}<th>Total</th></tr></thead>
+        <thead><tr><th>Team</th>${rounds.map(r=>`<th class="${r<=2?'pivot-premium':''}">${r}</th>`).join('')}<th>Total</th></tr></thead>
         <tbody>${rowsHTML}
           <tr class="pivot-league-total"><td>League Total</td>${rounds.map(r=>`<td>${roundTotals[r]}</td>`).join('')}<td>${grandTotal}</td></tr>
         </tbody>
