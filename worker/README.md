@@ -1,8 +1,9 @@
-# League AI backend
+# DERIK backend
 
-A Cloudflare Worker that powers the chat page at `/chat/`. It holds the
-Anthropic API key, runs a tool-use loop against a D1 (SQLite) database seeded
-with the league's full history, and streams the answer back to the browser.
+A Cloudflare Worker that powers DERIK, the chatbot on the site's home page
+(`index.html`). It holds the Anthropic API key, runs a tool-use loop against
+a D1 (SQLite) database seeded with the league's full history, and streams
+the answer back to the browser.
 
 ## One-time setup
 
@@ -85,14 +86,14 @@ wrangler deploy
 ```
 
 This prints a `*.workers.dev` URL. Paste it (with `/api/chat` appended) into
-`API_URL` at the top of `../chat/chat.js`, then rebuild and commit:
+`API_URL` at the top of `../home/chat.js`, then rebuild and commit:
 
 ```bash
 cd ../build
 node build.js
 cd ..
-git add chat/chat.js index.html chat/index.html
-git commit -m "Wire up League AI backend URL"
+git add home/chat.js index.html hq/index.html
+git commit -m "Wire up DERIK backend URL"
 git push
 ```
 

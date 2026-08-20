@@ -597,7 +597,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     </div>
     <div class="header-meta">
       <span id="dataAsOf">Synced from MFL League 31492</span>
-      <a href="chat/index.html" class="theme-toggle" style="text-decoration:none;">League AI &rarr;</a>
+      <a href="../index.html" class="theme-toggle" style="text-decoration:none;">&larr; DERIK</a>
       <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn">Theme: Auto</button>
     </div>
   </header>
@@ -872,16 +872,20 @@ function fmtSaved(saved){
 }
 
 /* ---------- Tabs ---------- */
+function activateTab(tab){
+  const btn = document.querySelector('.tab-btn[data-tab="'+tab+'"]');
+  if(!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab === 'trade') renderTradeFinderTab();
+  if(tab === 'overview') populateOverviewTeamSelect();
+}
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab === 'trade') renderTradeFinderTab();
-    if(btn.dataset.tab === 'overview') populateOverviewTeamSelect();
-  });
+  btn.addEventListener('click', ()=> activateTab(btn.dataset.tab));
 });
+if(location.hash) activateTab(location.hash.slice(1));
 
 /* ---------- Theme ---------- */
 const THEMES = ['auto','light','dark'];

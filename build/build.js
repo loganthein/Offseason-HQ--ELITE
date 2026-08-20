@@ -1,48 +1,51 @@
-// Regenerates ../index.html from template.html + the data files in this folder.
-// Run with: node build.js   (from inside the build/ folder)
+// Regenerates ../index.html (DERIK home page) and ../hq/index.html (the
+// roster/keeper/draft tool) from their templates + the data files in this
+// folder. Run with: node build.js   (from inside the build/ folder)
 const fs = require('fs');
 const path = require('path');
 
 const root = __dirname;
-const outPath = path.join(root, '..', 'index.html');
-
-let html = fs.readFileSync(path.join(root, 'template.html'), 'utf8');
 const fonts = JSON.parse(fs.readFileSync(path.join(root, 'fonts_b64.json'), 'utf8'));
+
+function injectFonts(html) {
+  return html
+    .replace('{{FONT_BEBAS}}', fonts.f1)
+    .replace('{{FONT_DMMONO400}}', fonts.f2)
+    .replace('{{FONT_DMMONO500}}', fonts.f3)
+    .replace('{{FONT_INTER}}', fonts.f4);
+}
+
+function checkResolved(html, label) {
+  const remaining = html.match(/{{[A-Z_]+}}/g);
+  if (remaining) {
+    console.error(`ERROR: unresolved placeholders in ${label}:`, remaining);
+    process.exit(1);
+  }
+}
+
+// --- hq/index.html (Offseason HQ: rosters, keepers, picks, trade finder) ---
+const hqOutPath = path.join(root, '..', 'hq', 'index.html');
+let hqHtml = fs.readFileSync(path.join(root, 'template.html'), 'utf8');
 const roster = fs.readFileSync(path.join(root, 'seed_roster_final.json'), 'utf8');
 const picks = fs.readFileSync(path.join(root, 'seed_picks_final.json'), 'utf8');
 const notes = fs.readFileSync(path.join(root, 'team_notes_min.json'), 'utf8');
 
-html = html.replace('{{FONT_BEBAS}}', fonts.f1);
-html = html.replace('{{FONT_DMMONO400}}', fonts.f2);
-html = html.replace('{{FONT_DMMONO500}}', fonts.f3);
-html = html.replace('{{FONT_INTER}}', fonts.f4);
-html = html.replace('{{SEED_ROSTER}}', roster);
-html = html.replace('{{SEED_PICKS}}', picks);
-html = html.replace('{{TEAM_NOTES}}', notes);
+hqHtml = injectFonts(hqHtml)
+  .replace('{{SEED_ROSTER}}', roster)
+  .replace('{{SEED_PICKS}}', picks)
+  .replace('{{TEAM_NOTES}}', notes);
 
-const remaining = html.match(/{{[A-Z_]+}}/g);
-if (remaining) {
-  console.error('ERROR: unresolved placeholders:', remaining);
-  process.exit(1);
-}
+checkResolved(hqHtml, 'build/template.html');
+fs.writeFileSync(hqOutPath, hqHtml);
+console.log('Wrote', hqOutPath, `(${(hqHtml.length / 1024).toFixed(0)} KB)`);
 
-fs.writeFileSync(outPath, html);
-console.log('Wrote', outPath, `(${(html.length / 1024).toFixed(0)} KB)`);
+// --- index.html (DERIK home page) ---
+const homeOutPath = path.join(root, '..', 'index.html');
+let homeHtml = fs.readFileSync(path.join(root, '..', 'home', 'template.html'), 'utf8');
+const facts = fs.readFileSync(path.join(root, 'facts.json'), 'utf8');
 
-// --- chat/index.html (League AI page) ---
-const chatOutPath = path.join(root, '..', 'chat', 'index.html');
-let chatHtml = fs.readFileSync(path.join(root, '..', 'chat', 'template.html'), 'utf8');
+homeHtml = injectFonts(homeHtml).replace('{{FACTS}}', facts);
 
-chatHtml = chatHtml.replace('{{FONT_BEBAS}}', fonts.f1);
-chatHtml = chatHtml.replace('{{FONT_DMMONO400}}', fonts.f2);
-chatHtml = chatHtml.replace('{{FONT_DMMONO500}}', fonts.f3);
-chatHtml = chatHtml.replace('{{FONT_INTER}}', fonts.f4);
-
-const chatRemaining = chatHtml.match(/{{[A-Z_]+}}/g);
-if (chatRemaining) {
-  console.error('ERROR: unresolved placeholders in chat/template.html:', chatRemaining);
-  process.exit(1);
-}
-
-fs.writeFileSync(chatOutPath, chatHtml);
-console.log('Wrote', chatOutPath, `(${(chatHtml.length / 1024).toFixed(0)} KB)`);
+checkResolved(homeHtml, 'home/template.html');
+fs.writeFileSync(homeOutPath, homeHtml);
+console.log('Wrote', homeOutPath, `(${(homeHtml.length / 1024).toFixed(0)} KB)`);

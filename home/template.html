@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DERIK &mdash; #ELITE Fantasy Football</title>
+<style>
+@font-face{
+  font-family:'Bebas Neue';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_BEBAS}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO400}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO500}}) format('woff2');
+}
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_INTER}}) format('woff2');
+}
+
+:root{
+  --bg:#f6f5ef;
+  --tile:#ffffff;
+  --tile-hover:#eeece2;
+  --ink:#1b2420;
+  --ink-dim:#5c6b62;
+  --ink-faint:#93a099;
+  --border:#e2e0d3;
+  --border-soft:#ebe9dd;
+  --green:#1b5e3f;
+  --green-ink:#134430;
+  --green-dim:#e3efe7;
+  --shadow:0 1px 2px rgba(27,36,32,0.05), 0 10px 30px -14px rgba(27,36,32,0.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0e1512;
+  --tile:#161f1a;
+  --tile-hover:#1d2921;
+  --ink:#eef3ef;
+  --ink-dim:#a3b3aa;
+  --ink-faint:#68796f;
+  --border:#26332c;
+  --border-soft:#202b25;
+  --green:#42d98f;
+  --green-ink:#8fecbe;
+  --green-dim:rgba(66,217,143,0.14);
+  --shadow:0 1px 2px rgba(0,0,0,0.3), 0 10px 30px -14px rgba(0,0,0,0.5);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1512;
+    --tile:#161f1a;
+    --tile-hover:#1d2921;
+    --ink:#eef3ef;
+    --ink-dim:#a3b3aa;
+    --ink-faint:#68796f;
+    --border:#26332c;
+    --border-soft:#202b25;
+    --green:#42d98f;
+    --green-ink:#8fecbe;
+    --green-dim:rgba(66,217,143,0.14);
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 10px 30px -14px rgba(0,0,0,0.5);
+  }
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ---------- Header ---------- */
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 22px;
+  flex:0 0 auto;
+}
+.brand{ display:flex; align-items:baseline; gap:10px; }
+.brand .eyebrow{ font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-faint); }
+.brand h1{ font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:24px; margin:0; letter-spacing:0.5px; color:var(--green); }
+.header-right{ display:flex; align-items:center; gap:10px; }
+
+.hq-menu{ position:relative; }
+.hq-menu-btn{
+  font-family:'DM Mono',monospace;
+  font-size:11.5px;
+  letter-spacing:0.2px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  color:var(--ink-dim);
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.hq-menu-btn:hover{ color:var(--ink); border-color:var(--ink-faint); }
+.hq-menu-panel{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  min-width:210px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  padding:6px;
+  display:none;
+  z-index:20;
+}
+.hq-menu.open .hq-menu-panel{ display:block; }
+.hq-menu-panel a{
+  display:block;
+  padding:9px 12px;
+  border-radius:8px;
+  color:var(--ink);
+  text-decoration:none;
+  font-size:13.5px;
+}
+.hq-menu-panel a:hover{ background:var(--tile-hover); color:var(--green); }
+
+.theme-toggle{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  color:var(--ink-dim);
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+/* ---------- Stage ---------- */
+main{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+
+.empty-state{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  text-align:center;
+}
+.derik-logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-weight:400;
+  font-size:56px;
+  letter-spacing:1px;
+  color:var(--ink);
+  margin:0 0 6px;
+}
+.derik-logo span{ color:var(--green); }
+.welcome{
+  font-size:16px;
+  color:var(--ink-dim);
+  margin:0 0 28px;
+  max-width:460px;
+}
+
+.composer{
+  width:100%;
+  max-width:640px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  padding:12px 12px 12px 18px;
+}
+.composer textarea{
+  flex:1;
+  border:none;
+  background:transparent;
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  line-height:1.4;
+  resize:none;
+  outline:none;
+  max-height:160px;
+  padding:6px 0;
+  overflow-y:hidden;
+}
+.composer textarea::placeholder{ color:var(--ink-faint); }
+.send-btn{
+  flex:0 0 auto;
+  width:36px; height:36px;
+  border-radius:50%;
+  border:none;
+  background:var(--green);
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.send-btn:disabled{ background:var(--border); color:var(--ink-faint); cursor:default; }
+
+.fact-card{
+  margin-top:26px;
+  max-width:520px;
+  padding:14px 18px;
+  background:var(--green-dim);
+  border-radius:14px;
+  text-align:left;
+}
+.fact-label{
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.7px;
+  text-transform:uppercase;
+  color:var(--green-ink);
+  margin-bottom:5px;
+  font-weight:500;
+}
+.fact-text{ font-size:13.5px; line-height:1.5; color:var(--ink); }
+.fact-text strong{ color:var(--green-ink); }
+
+.suggestions{
+  margin-top:20px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  max-width:560px;
+}
+.chip{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:8px 14px;
+  font-size:12.5px;
+  color:var(--ink-dim);
+  cursor:pointer;
+}
+.chip:hover{ border-color:var(--green); color:var(--green-ink); }
+
+/* ---------- Chat (post-first-message) ---------- */
+.messages{
+  flex:1 1 auto;
+  overflow-y:auto;
+  display:none;
+  justify-content:center;
+}
+body.chatting .empty-state{ display:none; }
+body.chatting .messages{ display:flex; }
+
+.messages-col{
+  width:100%;
+  max-width:720px;
+  padding:10px 20px 130px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.msg{ display:flex; }
+.msg.user{ justify-content:flex-end; }
+.msg-bubble{
+  max-width:82%;
+  padding:10px 14px;
+  border-radius:14px;
+  font-size:15px;
+  line-height:1.55;
+  white-space:pre-wrap;
+}
+.msg.user .msg-bubble{
+  background:var(--green);
+  color:#fff;
+  border-bottom-right-radius:4px;
+}
+.msg.assistant .msg-bubble{
+  background:transparent;
+  color:var(--ink);
+  padding:2px 0;
+  max-width:100%;
+}
+.msg-bubble table{ border-collapse:collapse; margin:10px 0; font-size:13.5px; }
+.msg-bubble th,.msg-bubble td{ border:1px solid var(--border); padding:5px 9px; text-align:left; }
+.msg-bubble th{ background:var(--tile-hover); }
+.msg-bubble code{ font-family:'DM Mono',monospace; background:var(--border-soft); padding:1px 5px; border-radius:4px; font-size:13px; }
+.msg-bubble strong{ color:var(--green-ink); }
+.msg-bubble ul,.msg-bubble ol{ margin:6px 0; padding-left:22px; }
+
+.cursor{ display:inline-block; width:7px; height:15px; background:var(--ink-faint); vertical-align:text-bottom; animation:blink 1s step-start infinite; margin-left:1px; }
+@keyframes blink{ 50%{ opacity:0; } }
+
+.composer-wrap{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  display:none;
+  justify-content:center;
+  padding:14px 20px 18px;
+  background:linear-gradient(to top, var(--bg) 65%, transparent);
+}
+body.chatting .composer-wrap{ display:flex; }
+.composer-wrap-inner{ width:100%; max-width:720px; }
+.footnote{
+  text-align:center;
+  font-size:11px;
+  color:var(--ink-faint);
+  margin-top:8px;
+}
+
+@media (max-width: 640px){
+  header{ padding:14px 16px; gap:8px; }
+  .brand .eyebrow{ font-size:9px; }
+  .header-right{ gap:6px; }
+  .hq-menu-btn, .theme-toggle{ font-size:10.5px; padding:7px 8px; white-space:nowrap; }
+  .derik-logo{ font-size:42px; }
+  .welcome{ font-size:14.5px; margin-bottom:22px; }
+  .composer{ border-radius:16px; padding:10px 10px 10px 14px; }
+  .fact-card{ margin-top:20px; padding:12px 14px; }
+  .suggestions{ display:none; }
+  .msg-bubble{ max-width:90%; font-size:14.5px; }
+  .messages-col{ padding:8px 14px 130px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="eyebrow">#ELITE Fantasy Football</div>
+  </div>
+  <div class="header-right">
+    <div class="hq-menu" id="hqMenu">
+      <button class="hq-menu-btn" id="hqMenuBtn">Offseason HQ &#9662;</button>
+      <div class="hq-menu-panel">
+        <a href="hq/index.html#rules">Rules &amp; Settings</a>
+        <a href="hq/index.html#overview">Team Overview</a>
+        <a href="hq/index.html#roster">Roster &amp; Keepers</a>
+        <a href="hq/index.html#picks">Draft Picks</a>
+        <a href="hq/index.html#trade">Trade Finder</a>
+      </div>
+    </div>
+    <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn">Theme: Auto</button>
+  </div>
+</header>
+
+<main>
+  <div class="empty-state" id="emptyState">
+    <h1 class="derik-logo">DE<span>RIK</span></h1>
+    <p class="welcome">Hey, I'm DERIK. Ask me anything about #ELITE league history &mdash; every game, trade, and draft since 2013.</p>
+    <div id="composerSlotCenter"></div>
+    <div class="fact-card" id="factCard">
+      <div class="fact-label">Did you know</div>
+      <div class="fact-text" id="factText"></div>
+    </div>
+    <div class="suggestions">
+      <div class="chip" data-q="Who won week 5 of the 2017 season?">Who won week 5 of 2017?</div>
+      <div class="chip" data-q="What's the biggest blowout in league history?">Biggest blowout ever?</div>
+      <div class="chip" data-q="Who has the most championships?">Most championships?</div>
+    </div>
+  </div>
+
+  <div class="messages" id="messagesOuter">
+    <div class="messages-col" id="messages"></div>
+  </div>
+</main>
+
+<div class="composer-wrap" id="composerWrap">
+  <div class="composer-wrap-inner">
+    <div id="composerSlotBottom"></div>
+    <div class="footnote">DERIK can make mistakes. Check important stats against the Record Book.</div>
+  </div>
+</div>
+
+<script>
+function getTheme(){ try{ return localStorage.getItem('elite-hq-theme') || 'auto'; }catch(e){ return 'auto'; } }
+function applyTheme(theme){
+  const root = document.documentElement;
+  if(theme === 'auto'){ root.removeAttribute('data-theme'); }
+  else{ root.setAttribute('data-theme', theme); }
+  document.getElementById('themeBtn').textContent = 'Theme: ' + theme[0].toUpperCase() + theme.slice(1);
+  try{ localStorage.setItem('elite-hq-theme', theme); }catch(e){}
+}
+function cycleTheme(){
+  const order = ['auto','light','dark'];
+  const next = order[(order.indexOf(getTheme()) + 1) % order.length];
+  applyTheme(next);
+}
+applyTheme(getTheme());
+
+const hqMenu = document.getElementById('hqMenu');
+document.getElementById('hqMenuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  hqMenu.classList.toggle('open');
+});
+document.addEventListener('click', () => hqMenu.classList.remove('open'));
+
+const FACTS = {{FACTS}};
+</script>
+<script src="home/chat.js"></script>
+</body>
+</html>

@@ -1,30 +1,66 @@
-// #ELITE League AI chat frontend.
+// DERIK — the #ELITE league history chatbot.
 // Talks to the Cloudflare Worker at API_URL, which proxies to Claude with a
 // read-only SQL tool over the league history database. See worker/README.md.
 
 const API_URL = "https://elite-league-chat.loganthein.workers.dev/api/chat";
 
 const messagesEl = document.getElementById("messages");
-const emptyStateEl = document.getElementById("emptyState");
-const inputEl = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
+const messagesOuterEl = document.getElementById("messagesOuter");
+const composerSlotCenter = document.getElementById("composerSlotCenter");
+const composerSlotBottom = document.getElementById("composerSlotBottom");
 
 const history = []; // [{role, content}]
 let sending = false;
+let started = false;
 
+// ---------- Composer (single instance, moved between the centered empty
+// state and the fixed bottom bar on first send) ----------
+const composer = document.createElement("div");
+composer.className = "composer";
+composer.innerHTML = `
+  <textarea id="input" placeholder="Ask DERIK anything about the league&hellip;" rows="1"></textarea>
+  <button class="send-btn" id="sendBtn" aria-label="Send">&uarr;</button>
+`;
+composerSlotCenter.appendChild(composer);
+
+const inputEl = composer.querySelector("#input");
+const sendBtn = composer.querySelector("#sendBtn");
+
+function startChat() {
+  if (started) return;
+  started = true;
+  composerSlotBottom.appendChild(composer);
+  document.body.classList.add("chatting");
+}
+
+// ---------- Did You Know ----------
+function pickFact() {
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const matches = (FACTS.onthisday || []).filter((f) => f.month === month && f.day === day);
+  if (matches.length) {
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    return matches[dayOfYear % matches.length].text;
+  }
+  const pool = FACTS.record || [];
+  if (!pool.length) return "";
+  const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+  return pool[dayOfYear % pool.length];
+}
+document.getElementById("factText").innerHTML = renderMarkdown(pickFact());
+
+// ---------- Markdown ----------
 function renderMarkdown(text) {
   let html = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // fenced/inline code
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-  // bold / italic
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
 
-  // simple pipe tables
   html = html.replace(/((?:^\|.*\|\s*$\n?)+)/gm, (block) => {
     const rows = block.trim().split("\n").map((r) => r.trim());
     if (rows.length < 2 || !/^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(rows[1])) return block;
@@ -36,13 +72,11 @@ function renderMarkdown(text) {
     return t + "</tbody></table>";
   });
 
-  // lists
   html = html.replace(/((?:^[-*] .*$\n?)+)/gm, (block) => {
     const items = block.trim().split("\n").map((l) => l.replace(/^[-*]\s+/, ""));
     return "<ul>" + items.map((i) => `<li>${i}</li>`).join("") + "</ul>";
   });
 
-  // paragraphs: blank-line separated, but skip lines already turned into block tags
   html = html
     .split(/\n{2,}/)
     .map((block) => (/^\s*<(table|ul|ol)/.test(block) ? block : `<p>${block.replace(/\n/g, "<br>")}</p>`))
@@ -52,7 +86,6 @@ function renderMarkdown(text) {
 }
 
 function addMessage(role, text) {
-  emptyStateEl.style.display = "none";
   const row = document.createElement("div");
   row.className = `msg ${role}`;
   const bubble = document.createElement("div");
@@ -64,7 +97,7 @@ function addMessage(role, text) {
   }
   row.appendChild(bubble);
   messagesEl.appendChild(row);
-  window.scrollTo(0, document.body.scrollHeight);
+  messagesOuterEl.scrollTop = messagesOuterEl.scrollHeight;
   return bubble;
 }
 
@@ -72,6 +105,7 @@ async function send(text) {
   if (sending || !text.trim()) return;
   sending = true;
   sendBtn.disabled = true;
+  startChat();
 
   addMessage("user", text);
   history.push({ role: "user", content: text });
@@ -108,7 +142,7 @@ async function send(text) {
           full += evt.text;
           assistantBubble.innerHTML = renderMarkdown(full);
           assistantBubble.appendChild(cursor);
-          window.scrollTo(0, document.body.scrollHeight);
+          messagesOuterEl.scrollTop = messagesOuterEl.scrollHeight;
         }
       }
     }
@@ -120,6 +154,7 @@ async function send(text) {
     history.push({ role: "assistant", content: full });
     sending = false;
     sendBtn.disabled = false;
+    inputEl.focus();
   }
 }
 
@@ -135,6 +170,6 @@ inputEl.addEventListener("input", () => {
   inputEl.style.height = `${Math.min(inputEl.scrollHeight, 160)}px`;
 });
 
-document.querySelectorAll(".suggestion").forEach((el) => {
+document.querySelectorAll(".chip").forEach((el) => {
   el.addEventListener("click", () => send(el.dataset.q));
 });

@@ -9,7 +9,7 @@
 // worker/scripts/import-league-history.js. See worker/migrations/0001_init.sql
 // for the schema.
 
-const SYSTEM_PROMPT = `You are the #ELITE Fantasy Football league historian. You answer questions about the league's full history (2013-present) using a SQLite database via the query_league_database tool. Always use the tool to look up facts rather than guessing — you have no league knowledge outside the database.
+const SYSTEM_PROMPT = `You are DERIK, the #ELITE Fantasy Football league historian. You answer questions about the league's full history (2013-present) using a SQLite database via the query_league_database tool. Always use the tool to look up facts rather than guessing — you have no league knowledge outside the database.
 
 Schema:
 
