@@ -13,6 +13,7 @@ A single-page offseason hub for **#ELITE Fantasy Football** (MFL League 31492) �
 - **Roster & Keepers** — full league roster, sortable/filterable, with a leaguewide keeper-value ranking
 - **Draft Picks** — the 2026 draft order plus 2027–2029, with a by-round breakdown
 - **Trade Finder** — player search, similar-value finder, AI-written team breakdowns, and a keep planner
+- **League AI** (`/chat`) — a Claude-style chatbot that can answer anything about league history since 2013 (matchups, blowouts, drafts, transactions). See [`worker/README.md`](worker/README.md) for how it's built and how to deploy its backend.
 
 ## Publishing to GitHub Pages
 

@@ -28,3 +28,21 @@ if (remaining) {
 
 fs.writeFileSync(outPath, html);
 console.log('Wrote', outPath, `(${(html.length / 1024).toFixed(0)} KB)`);
+
+// --- chat/index.html (League AI page) ---
+const chatOutPath = path.join(root, '..', 'chat', 'index.html');
+let chatHtml = fs.readFileSync(path.join(root, '..', 'chat', 'template.html'), 'utf8');
+
+chatHtml = chatHtml.replace('{{FONT_BEBAS}}', fonts.f1);
+chatHtml = chatHtml.replace('{{FONT_DMMONO400}}', fonts.f2);
+chatHtml = chatHtml.replace('{{FONT_DMMONO500}}', fonts.f3);
+chatHtml = chatHtml.replace('{{FONT_INTER}}', fonts.f4);
+
+const chatRemaining = chatHtml.match(/{{[A-Z_]+}}/g);
+if (chatRemaining) {
+  console.error('ERROR: unresolved placeholders in chat/template.html:', chatRemaining);
+  process.exit(1);
+}
+
+fs.writeFileSync(chatOutPath, chatHtml);
+console.log('Wrote', chatOutPath, `(${(chatHtml.length / 1024).toFixed(0)} KB)`);

@@ -1,0 +1,17 @@
+name = "elite-league-chat"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# Created by `wrangler d1 create elite-league-history` — paste the returned
+# database_id below before deploying. See worker/README.md.
+[[d1_databases]]
+binding = "DB"
+database_name = "elite-league-history"
+database_id = "a6330626-83c5-4f1a-ae2c-b96ba226e19c"
+
+# Set with: wrangler secret put ANTHROPIC_API_KEY
+
+[vars]
+# The GitHub Pages origin allowed to call this Worker (CORS). Update before
+# deploying, e.g. "https://loganthein.github.io".
+ALLOWED_ORIGIN = "https://loganthein.github.io"
