@@ -129,7 +129,7 @@ function assertSelectOnly(sql) {
   return /\blimit\b/i.test(trimmed) ? trimmed : `${trimmed} LIMIT 200`;
 }
 
-async function callClaude(env, messages, { stream }) {
+async function callClaude(env, messages, { stream, tools = TOOLS }) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -141,7 +141,7 @@ async function callClaude(env, messages, { stream }) {
       model: MODEL,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      tools: TOOLS,
+      tools,
       messages,
       stream,
     }),
@@ -149,6 +149,14 @@ async function callClaude(env, messages, { stream }) {
   if (!res.ok) {
     const body = await res.text();
     console.error("Claude API error", res.status, JSON.stringify([...res.headers.entries()]), body);
+    // The web_search tool declaration is validated on every request even when
+    // unused. If it's the reason this call is failing (not enabled for this
+    // API key, unsupported tool version, etc.), retry once without it rather
+    // than taking down every question, including plain DB lookups.
+    if (tools === TOOLS) {
+      console.error("Retrying without web_search tool");
+      return callClaude(env, messages, { stream, tools: TOOLS.filter((t) => t.name !== "web_search") });
+    }
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 500)}`);
   }
   return res;
