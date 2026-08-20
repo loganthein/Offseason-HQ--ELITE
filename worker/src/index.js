@@ -102,13 +102,15 @@ const TOOLS = [
     },
   },
   {
-    type: "web_search_20260209",
+    // web_search_20260209 (dynamic filtering) needs Opus/Sonnet 4.6+; Haiku
+    // 4.5 predates that, so it gets the older basic web search tool version.
+    type: "web_search_20250305",
     name: "web_search",
     max_uses: 3,
   },
 ];
 
-const MODEL = "claude-sonnet-5";
+const MODEL = "claude-haiku-4-5";
 const MAX_TOOL_ROUNDS = 6;
 
 function corsHeaders(env) {
