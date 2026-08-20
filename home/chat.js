@@ -18,7 +18,7 @@ let started = false;
 const composer = document.createElement("div");
 composer.className = "composer";
 composer.innerHTML = `
-  <textarea id="input" placeholder="Ask DERIK anything about the league&hellip;" rows="1"></textarea>
+  <textarea id="input" placeholder="Ask DERIK anything&hellip;" rows="1"></textarea>
   <button class="send-btn" id="sendBtn" aria-label="Send">&uarr;</button>
 `;
 composerSlotCenter.appendChild(composer);

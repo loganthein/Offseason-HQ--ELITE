@@ -12,7 +12,8 @@ function injectFonts(html) {
     .replace('{{FONT_BEBAS}}', fonts.f1)
     .replace('{{FONT_DMMONO400}}', fonts.f2)
     .replace('{{FONT_DMMONO500}}', fonts.f3)
-    .replace('{{FONT_INTER}}', fonts.f4);
+    .replace('{{FONT_INTER}}', fonts.f4)
+    .replace('{{FONT_QUICKSAND}}', fonts.f5);
 }
 
 function checkResolved(html, label) {

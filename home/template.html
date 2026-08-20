@@ -33,6 +33,13 @@
   font-display:swap;
   src:url(data:font/woff2;base64,{{FONT_INTER}}) format('woff2');
 }
+@font-face{
+  font-family:'Quicksand';
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_QUICKSAND}}) format('woff2');
+}
 
 :root{
   --bg:#f6f5ef;
@@ -175,9 +182,9 @@ main{
   text-align:center;
 }
 .derik-logo{
-  font-family:'Inter',sans-serif;
-  font-weight:500;
-  font-size:48px;
+  font-family:'Quicksand','Inter',sans-serif;
+  font-weight:600;
+  font-size:50px;
   letter-spacing:0.5px;
   color:var(--green);
   margin:0 0 8px;
@@ -218,7 +225,7 @@ main{
   padding:8px 0;
   overflow-y:hidden;
 }
-.composer textarea::placeholder{ color:var(--ink-faint); }
+.composer textarea::placeholder{ color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .send-btn{
   flex:0 0 auto;
   width:36px; height:36px;
@@ -347,7 +354,9 @@ body.chatting .composer-wrap{ display:flex; }
   .hq-menu-btn, .theme-toggle{ font-size:10.5px; padding:7px 8px; white-space:nowrap; }
   .derik-logo{ font-size:42px; }
   .welcome{ font-size:14.5px; margin-bottom:22px; }
-  .composer{ border-radius:16px; padding:10px 10px 10px 14px; }
+  .composer{ border-radius:16px; padding:8px 8px 8px 14px; }
+  .composer textarea{ font-size:14.5px; }
+  .send-btn{ width:32px; height:32px; font-size:14px; }
   .fact-card{ margin-top:20px; padding:12px 14px; }
   .suggestions{ display:none; }
   .msg-bubble{ max-width:90%; font-size:14.5px; }
