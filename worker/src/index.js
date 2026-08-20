@@ -44,12 +44,31 @@ transactions(transaction_id, season, week, ts TEXT, franchise_id, type TEXT,
   -- are recorded before 2020 — LeagueLegacy's early ESPN-imported seasons
   -- don't include full transaction history.
 
+season_champions(season INTEGER PRIMARY KEY, franchise_id INTEGER)
+  -- the authoritative champion for each season, sourced from LeagueLegacy's
+  -- own record book. Use this — not games.is_championship — for any
+  -- "how many championships"/"who won the season X title" question.
+  -- games.is_championship is unset for 2025 specifically (a known gap;
+  -- LeagueLegacy's own site was still reconciling that season's data when
+  -- this was last synced), so it under-counts if you rely on it instead.
+
+franchise_owners(franchise_id INTEGER PRIMARY KEY, owner_name TEXT)
+  -- the real person behind each franchise. People ask about the league by
+  -- owner's first name/nickname at least as often as by team name (team
+  -- names change most seasons, the owner doesn't) — when a question names a
+  -- person instead of a team, JOIN franchise_owners on franchise_id to
+  -- resolve it. Owner names are casual first names/nicknames, not full legal
+  -- names — match case-insensitively and allow partial matches (e.g. "Goon"
+  -- should match "Goon (Adam)").
+
 Example queries:
 - Who won week 5 of 2017: SELECT fh.name home, fa.name away, g.home_score, g.away_score FROM games g JOIN franchise_names fh ON fh.franchise_id=g.home_franchise_id AND fh.season=g.season JOIN franchise_names fa ON fa.franchise_id=g.away_franchise_id AND fa.season=g.season WHERE g.season=2017 AND g.week=5;
 - Biggest blowout ever: SELECT season, week, ABS(home_score-away_score) margin FROM games ORDER BY margin DESC LIMIT 1;
 - A franchise's all-time record: SELECT SUM(CASE WHEN (home_franchise_id=? AND home_score>away_score) OR (away_franchise_id=? AND away_score>home_score) THEN 1 ELSE 0 END) wins, COUNT(*) games FROM games WHERE home_franchise_id=? OR away_franchise_id=?;
+- How many championships has Chad won: SELECT COUNT(*) FROM season_champions sc JOIN franchise_owners fo ON fo.franchise_id=sc.franchise_id WHERE fo.owner_name LIKE '%Chad%';
+- Who did Jackie trade with in 2022: SELECT * FROM transactions t JOIN franchise_owners fo ON fo.franchise_id=t.franchise_id WHERE fo.owner_name LIKE '%Jackie%' AND t.type='trade' AND t.season=2022;
 
-Only SELECT statements are allowed. Write plain, direct answers — this is a casual league chatbot, not a report. Use team names (joined via franchise_names for the relevant season), not franchise_id numbers, when answering.`;
+Only SELECT statements are allowed. Write plain, direct answers — this is a casual league chatbot, not a report. Use team names (joined via franchise_names for the relevant season) or owner first names, not franchise_id numbers, when answering.`;
 
 const TOOLS = [
   {

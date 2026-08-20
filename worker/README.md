@@ -27,7 +27,20 @@ Copy the `database_id` it prints into `worker/wrangler.toml` (replace
 
 ```bash
 wrangler d1 execute elite-league-history --remote --file=migrations/0001_init.sql
+wrangler d1 execute elite-league-history --remote --file=migrations/0002_champions.sql
+wrangler d1 execute elite-league-history --remote --file=migrations/0003_owners.sql
 ```
+
+`0002_champions.sql` is the authoritative season-by-season champion list
+(sourced from LeagueLegacy's own record book, not inferred from
+`games.is_championship` — that flag is missing for 2025, and possibly future
+seasons until LeagueLegacy finishes processing them; re-derive this file by
+hand from `leaguelegacy.io/leagues/elite-fantasy-football/history` → Season
+Champions if a new season needs adding).
+
+`0003_owners.sql` maps each franchise to the real person behind it, so DERIK
+resolves "Chad" the same as "Seal Team Nix." If a franchise changes hands,
+update this file and re-run it.
 
 ### 2. Load the league history
 

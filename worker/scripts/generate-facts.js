@@ -13,6 +13,8 @@ const db = new DatabaseSync(":memory:");
 db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0001_init.sql"), "utf8"));
 const seedDir = path.join(root, "worker", "migrations", "seed");
 for (const f of fs.readdirSync(seedDir).sort()) db.exec(fs.readFileSync(path.join(seedDir, f), "utf8"));
+db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0002_champions.sql"), "utf8"));
+db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0003_owners.sql"), "utf8"));
 
 const all = (q, ...params) => db.prepare(q).all(...params);
 const name = (id, season) => {
@@ -68,16 +70,26 @@ for (const g of all(`select *, abs(home_score-away_score) margin from games wher
   record.push(`The lowest single-game score in league history: **${name(r.fid, r.season)}** managed only ${r.s} points in Week ${r.week}, ${r.season}.`);
 }
 
-// Most championships
+// Most championships (by franchise; ties handled)
 {
-  const rows = all(`
-    select winner, count(*) c from (
-      select season, case when home_score>away_score then home_franchise_id else away_franchise_id end winner
-      from games where is_championship=1
-    ) group by winner order by c desc limit 1
+  const byFranchise = all(`select franchise_id, count(*) c from season_champions group by franchise_id order by c desc`);
+  const top = byFranchise[0].c;
+  const leaders = byFranchise.filter((r) => r.c === top).map((r) => `**${name(r.franchise_id, 2025)}**`);
+  const list = leaders.length > 1 ? leaders.slice(0, -1).join(", ") + " and " + leaders[leaders.length - 1] : leaders[0];
+  record.push(`${list} ${leaders.length > 1 ? "are tied for" : "has"} the most championships in league history: ${top}.`);
+}
+
+// Most championships by owner (ties handled — several owners share the top spot)
+{
+  const byOwner = all(`
+    select fo.owner_name, count(*) c from season_champions sc
+    join franchise_owners fo on fo.franchise_id = sc.franchise_id
+    group by fo.owner_name order by c desc
   `);
-  const r = rows[0];
-  record.push(`**${name(r.winner, 2025)}** has won the most championships in league history: ${r.c}.`);
+  const top = byOwner[0].c;
+  const leaders = byOwner.filter((r) => r.c === top).map((r) => `**${r.owner_name}**`);
+  const list = leaders.length > 1 ? leaders.slice(0, -1).join(", ") + " and " + leaders[leaders.length - 1] : leaders[0];
+  record.push(`${list} ${leaders.length > 1 ? "are tied for" : "has"} the most championships of any owner in league history: ${top}.`);
 }
 
 // Best / worst all-time win pct (min 60 games)
