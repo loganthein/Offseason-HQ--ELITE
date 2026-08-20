@@ -11,6 +11,7 @@ const { DatabaseSync } = require("node:sqlite");
 const root = path.join(__dirname, "..", "..");
 const db = new DatabaseSync(":memory:");
 db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0001_init.sql"), "utf8"));
+db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0004_richer_history.sql"), "utf8"));
 const seedDir = path.join(root, "worker", "migrations", "seed");
 for (const f of fs.readdirSync(seedDir).sort()) db.exec(fs.readFileSync(path.join(seedDir, f), "utf8"));
 db.exec(fs.readFileSync(path.join(root, "worker", "migrations", "0002_champions.sql"), "utf8"));
@@ -125,8 +126,12 @@ for (const p of all(`select * from draft_picks where value is not null order by 
 }
 
 // Highest FAAB bid
-for (const t of all(`select * from transactions where faab_bid is not null order by faab_bid desc limit 1`)) {
-  record.push(`The biggest FAAB bid in league history: **${name(t.franchise_id, t.season)}** paid $${t.faab_bid} to add **${t.player_added}** in ${t.season}.`);
+for (const t of all(`
+  select t.*, ti.player_name from transactions t
+  join transaction_items ti on ti.transaction_id=t.transaction_id and ti.direction='gain' and ti.item_type='player'
+  where t.faab_bid is not null order by t.faab_bid desc limit 1
+`)) {
+  record.push(`The biggest FAAB bid in league history: **${name(t.franchise_id, t.season)}** paid $${t.faab_bid} to add **${t.player_name}** in ${t.season}.`);
 }
 
 // Most transactions in a season by one franchise
@@ -136,23 +141,36 @@ for (const r of all(`select franchise_id, season, count(*) c from transactions g
 
 // --- On this day (real calendar dates from transaction timestamps) ---
 const onthisday = [];
-const trades = all(`select * from transactions where type='trade' and ts is not null and (player_added is not null or player_dropped is not null)`);
+const itemsFor = (transactionId) => all(`select * from transaction_items where transaction_id=?`, transactionId);
+
+// one row per trade (not per side — franchise_id < trade_partner_franchise_id picks one)
+const trades = all(`
+  select * from transactions
+  where type='trade' and ts is not null and trade_partner_franchise_id is not null
+    and franchise_id < trade_partner_franchise_id
+`);
 for (const t of trades) {
   const d = new Date(t.ts.replace(" ", "T") + "Z");
   if (isNaN(d)) continue;
-  let detail;
-  if (t.player_added && t.player_dropped) detail = `— adding **${t.player_added}**, sending away **${t.player_dropped}**`;
-  else if (t.player_added) detail = `— acquiring **${t.player_added}**`;
-  else detail = `— trading away **${t.player_dropped}**`;
+  const items = itemsFor(t.transaction_id);
+  const gained = items.filter((i) => i.direction === "gain").map((i) => i.player_name || (i.pick_round ? `a ${i.pick_season || ""} Round ${i.pick_round} pick` : null)).filter(Boolean);
+  const lost = items.filter((i) => i.direction === "loss").map((i) => i.player_name || (i.pick_round ? `a ${i.pick_season || ""} Round ${i.pick_round} pick` : null)).filter(Boolean);
+  if (!gained.length && !lost.length) continue;
+  const detail = `— **${name(t.franchise_id, t.season)}** got ${gained.map((p) => `**${p}**`).join(", ") || "little"}, **${name(t.trade_partner_franchise_id, t.season)}** got ${lost.map((p) => `**${p}**`).join(", ") || "little"}`;
   onthisday.push({
     month: d.getUTCMonth() + 1,
     day: d.getUTCDate(),
     year: d.getUTCFullYear(),
-    text: `On this day in ${d.getUTCFullYear()}, **${name(t.franchise_id, t.season)}** made a trade ${detail}.`,
+    text: `On this day in ${d.getUTCFullYear()}, a trade went down ${detail}.`,
   });
 }
+
 // notable big-FAAB or big-value adds, also real-dated
-const notableAdds = all(`select * from transactions where ts is not null and (faab_bid>=40 or value_added>=15) order by ts`);
+const notableAdds = all(`
+  select t.*, ti.player_name from transactions t
+  join transaction_items ti on ti.transaction_id=t.transaction_id and ti.direction='gain' and ti.item_type='player'
+  where t.ts is not null and (t.faab_bid>=40 or t.value>=15) order by t.ts
+`);
 for (const t of notableAdds) {
   const d = new Date(t.ts.replace(" ", "T") + "Z");
   if (isNaN(d)) continue;
@@ -161,7 +179,7 @@ for (const t of notableAdds) {
     month: d.getUTCMonth() + 1,
     day: d.getUTCDate(),
     year: d.getUTCFullYear(),
-    text: `On this day in ${d.getUTCFullYear()}, **${name(t.franchise_id, t.season)}** added **${t.player_added}** ${detail}.`,
+    text: `On this day in ${d.getUTCFullYear()}, **${name(t.franchise_id, t.season)}** added **${t.player_name}** ${detail}.`,
   });
 }
 

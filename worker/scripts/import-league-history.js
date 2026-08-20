@@ -1,11 +1,17 @@
 // Reads the raw LeagueLegacy pulls in scripts/raw/ and turns them into SQL
-// insert statements matching worker/migrations/0001_init.sql, one file per
-// season so each stays under D1's per-execute size limit.
+// insert statements matching the schema in worker/migrations/*.sql, one file
+// per season so each stays under D1's per-execute size limit.
+//
+// Games come from the original ll_*.json pulls. draft_picks and
+// transactions/transaction_items come from the richer ll_rich_*.json pulls
+// (added later to capture traded draft picks and full multi-item trade
+// detail — the original pulls only had a thin player_added/player_dropped
+// pair that was empty for many real trades).
 //
 // Usage: node worker/scripts/import-league-history.js
 // Output: worker/migrations/seed/*.sql (apply with `wrangler d1 execute
-// <db-name> --remote --file=<path>` for each file, in any order except
-// 0000_franchises.sql must run first since other tables reference it).
+// <db-name> --remote --file=<path>` for each file — 0000_franchises.sql
+// must run first since other tables reference it).
 const fs = require('fs');
 const path = require('path');
 
@@ -24,17 +30,26 @@ function sqlNum(v) {
   return Number.isFinite(n) ? String(n) : 'NULL';
 }
 
-// --- Load raw season pulls (files are either a single {year,...} object or
-// a {seasons: [...]} batch of several years) ---
-const seasonFiles = fs.readdirSync(rawDir).filter((f) => f.startsWith('ll_') && f.endsWith('.json') && f !== 'll_season_team_id_map.json');
+const teamIdMap = JSON.parse(fs.readFileSync(path.join(rawDir, 'll_season_team_id_map.json'), 'utf8'));
+
+// --- games + team names come from the original (non-"rich") pulls ---
+const gameFiles = fs
+  .readdirSync(rawDir)
+  .filter((f) => f.startsWith('ll_') && f.endsWith('.json') && f !== 'll_season_team_id_map.json' && !f.startsWith('ll_rich_'));
 const seasons = [];
-for (const f of seasonFiles) {
+for (const f of gameFiles) {
   const data = JSON.parse(fs.readFileSync(path.join(rawDir, f), 'utf8'));
   for (const s of data.seasons || [data]) seasons.push(s);
 }
 seasons.sort((a, b) => a.year - b.year);
 
-const teamIdMap = JSON.parse(fs.readFileSync(path.join(rawDir, 'll_season_team_id_map.json'), 'utf8'));
+// --- draft_picks + transactions come from the richer pulls ---
+const richFiles = fs.readdirSync(rawDir).filter((f) => f.startsWith('ll_rich_') && f.endsWith('.json'));
+const richByYear = new Map();
+for (const f of richFiles) {
+  const data = JSON.parse(fs.readFileSync(path.join(rawDir, f), 'utf8'));
+  for (const s of data.seasons) richByYear.set(s.year, s);
+}
 
 // --- franchises + franchise_names ---
 const franchiseNames = new Map(); // franchise_id -> latest name seen
@@ -52,6 +67,8 @@ fs.writeFileSync(
   `INSERT INTO franchises (franchise_id, display_name) VALUES\n${franchiseRows.join(',\n')};\n\n` +
     `INSERT INTO franchise_names (franchise_id, season, name) VALUES\n${franchiseNameRows.join(',\n')};\n`
 );
+
+let nextTransactionId = 1;
 
 // --- per-season games / draft_picks / transactions ---
 for (const s of seasons) {
@@ -84,30 +101,46 @@ for (const s of seasons) {
     );
   }
 
-  // draft_picks
-  const draftRows = s.draft_results.map(
-    ([round, pickInRound, isKeeper, playerName, position, value, franchiseId]) =>
-      `(${s.year}, ${round}, ${pickInRound}, ${isKeeper ? 1 : 0}, ${franchiseId}, ${sqlStr(playerName)}, ${sqlStr(position)}, ${sqlNum(value)})`
-  );
-  if (draftRows.length) {
-    lines.push(
-      `INSERT INTO draft_picks (season, round, pick_in_round, is_keeper, franchise_id, player_name, position, value) VALUES\n${draftRows.join(',\n')};`
+  const rich = richByYear.get(s.year);
+  if (rich) {
+    // draft_picks
+    const draftRows = rich.draft_results.map(
+      ([round, pickInRound, isKeeper, fromTrade, originalOwnerId, playerName, position, value, franchiseId]) =>
+        `(${s.year}, ${round}, ${pickInRound}, ${isKeeper ? 1 : 0}, ${fromTrade ? 1 : 0}, ${originalOwnerId ? originalOwnerId : 'NULL'}, ${franchiseId}, ${sqlStr(playerName)}, ${sqlStr(position)}, ${sqlNum(value)})`
     );
-  }
+    if (draftRows.length) {
+      lines.push(
+        `INSERT INTO draft_picks (season, round, pick_in_round, is_keeper, from_trade, original_franchise_id, franchise_id, player_name, position, value) VALUES\n${draftRows.join(',\n')};`
+      );
+    }
 
-  // transactions (season_team_id -> franchise_id via the lookup map)
-  const txRows = [];
-  for (const [week, ts, type, playerAdded, valueAdded, playerDropped, valueDropped, faabBid, seasonTeamId] of s.transactions) {
-    const franchiseId = teamIdMap[seasonTeamId];
-    if (!franchiseId) continue; // shouldn't happen, but skip rather than fail the whole import
-    txRows.push(
-      `(${s.year}, ${sqlNum(week)}, ${sqlStr(ts)}, ${franchiseId}, ${sqlStr(type)}, ${sqlStr(playerAdded)}, ${sqlNum(valueAdded)}, ${sqlStr(playerDropped)}, ${sqlNum(valueDropped)}, ${sqlNum(faabBid)})`
-    );
-  }
-  if (txRows.length) {
-    lines.push(
-      `INSERT INTO transactions (season, week, ts, franchise_id, type, player_added, value_added, player_dropped, value_dropped, faab_bid) VALUES\n${txRows.join(',\n')};`
-    );
+    // transactions + transaction_items (season_team_id -> franchise_id via the lookup map)
+    const txRows = [];
+    const itemRows = [];
+    for (const [week, ts, type, seasonTeamId, tradePartnerSeasonTeamId, faabBid, value, items] of rich.transactions) {
+      const franchiseId = teamIdMap[seasonTeamId];
+      if (!franchiseId) continue; // shouldn't happen, but skip rather than fail the whole import
+      const partnerFranchiseId = tradePartnerSeasonTeamId ? teamIdMap[tradePartnerSeasonTeamId] : null;
+      const transactionId = nextTransactionId++;
+      txRows.push(
+        `(${transactionId}, ${s.year}, ${sqlNum(week)}, ${sqlStr(ts)}, ${franchiseId}, ${sqlStr(type)}, ${partnerFranchiseId ? partnerFranchiseId : 'NULL'}, ${sqlNum(faabBid)}, ${sqlNum(value)})`
+      );
+      for (const [direction, itemType, playerName, position, pickRound, pickSeason, pickOriginalOwnerId] of items) {
+        itemRows.push(
+          `(${transactionId}, ${sqlStr(direction)}, ${sqlStr(itemType)}, ${sqlStr(playerName)}, ${sqlStr(position)}, ${sqlNum(pickRound)}, ${sqlNum(pickSeason)}, ${pickOriginalOwnerId ? pickOriginalOwnerId : 'NULL'})`
+        );
+      }
+    }
+    if (txRows.length) {
+      lines.push(
+        `INSERT INTO transactions (transaction_id, season, week, ts, franchise_id, type, trade_partner_franchise_id, faab_bid, value) VALUES\n${txRows.join(',\n')};`
+      );
+    }
+    if (itemRows.length) {
+      lines.push(
+        `INSERT INTO transaction_items (transaction_id, direction, item_type, player_name, position, pick_round, pick_season, pick_original_franchise_id) VALUES\n${itemRows.join(',\n')};`
+      );
+    }
   }
 
   if (lines.length) {

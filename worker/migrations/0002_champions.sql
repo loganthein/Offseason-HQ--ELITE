@@ -1,11 +1,12 @@
--- Authoritative season champions, sourced from LeagueLegacy's own Season
--- Champions record-book table (leaguelegacy.io/.../history), not inferred
--- from games.is_championship — that flag turned out unset for 2025, and
--- LeagueLegacy's own site displays a data-inconsistency for that season
--- (matchup results show The SHIELD losing its week-15 playoff game, while
--- their record book credits them as 2025 champion; their History page
--- itself carries a "League data is updating in the background" banner).
--- Every other season (2013-2024) matches games.is_championship exactly.
+-- Authoritative season champions. For 2013-2024 this matches both
+-- games.is_championship and LeagueLegacy's own record-book "Season
+-- Champions" table. For 2025, LeagueLegacy's record-book table is wrong
+-- (it credits The SHIELD, who actually lost their week-15 playoff game) —
+-- their History page even carries a "League data is updating in the
+-- background" banner. The real 2025 champion, confirmed by tracing the
+-- actual bracket in `games` (won wk15 vs Surfin' Loons, wk16 vs Flying
+-- Kites, wk17 championship 136.94-122.94 vs Seal Team Nix) and confirmed
+-- by the commissioner: Jack of All Trades (116241).
 CREATE TABLE season_champions (
   season INTEGER PRIMARY KEY,
   franchise_id INTEGER NOT NULL REFERENCES franchises(franchise_id)
@@ -24,4 +25,4 @@ INSERT INTO season_champions (season, franchise_id) VALUES
 (2022, 116244),
 (2023, 116249),
 (2024, 116241),
-(2025, 116239);
+(2025, 116241);
