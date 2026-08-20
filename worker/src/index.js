@@ -113,9 +113,14 @@ const TOOLS = [
 const MODEL = "claude-haiku-4-5";
 const MAX_TOOL_ROUNDS = 6;
 
-function corsHeaders(env) {
+function corsHeaders(env, request) {
+  // ALLOWED_ORIGIN may be a comma-separated list (e.g. the custom domain
+  // plus the github.io fallback during DNS cutover).
+  const allowed = (env.ALLOWED_ORIGIN || "*").split(",").map((o) => o.trim());
+  const origin = request?.headers.get("Origin");
+  const match = allowed.includes("*") ? "*" : allowed.includes(origin) ? origin : allowed[0];
   return {
-    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+    "Access-Control-Allow-Origin": match,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
@@ -233,7 +238,7 @@ async function handleChat(request, env) {
     headers: {
       "content-type": "text/event-stream",
       "cache-control": "no-cache",
-      ...corsHeaders(env),
+      ...corsHeaders(env, request),
     },
   });
 }
@@ -243,7 +248,7 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders(env) });
+      return new Response(null, { headers: corsHeaders(env, request) });
     }
 
     if (url.pathname === "/api/chat" && request.method === "POST") {
@@ -252,11 +257,11 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), {
           status: 500,
-          headers: { "content-type": "application/json", ...corsHeaders(env) },
+          headers: { "content-type": "application/json", ...corsHeaders(env, request) },
         });
       }
     }
 
-    return new Response("Not found", { status: 404, headers: corsHeaders(env) });
+    return new Response("Not found", { status: 404, headers: corsHeaders(env, request) });
   },
 };

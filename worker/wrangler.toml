@@ -12,6 +12,6 @@ database_id = "a6330626-83c5-4f1a-ae2c-b96ba226e19c"
 # Set with: wrangler secret put ANTHROPIC_API_KEY
 
 [vars]
-# The GitHub Pages origin allowed to call this Worker (CORS). Update before
-# deploying, e.g. "https://loganthein.github.io".
-ALLOWED_ORIGIN = "https://loganthein.github.io"
+# Comma-separated origins allowed to call this Worker (CORS). Includes the
+# custom domain plus the github.io URL as a fallback during DNS cutover.
+ALLOWED_ORIGIN = "https://elitefantasyhq.com,https://www.elitefantasyhq.com,https://loganthein.github.io"

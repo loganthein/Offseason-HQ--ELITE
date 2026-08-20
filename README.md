@@ -19,8 +19,30 @@ Both pages are self-contained static HTML: no server, no external requests excep
 ## Publishing to GitHub Pages
 
 1. Push this repo to GitHub (public repo, since Pages requires that on the free tier).
-2. On github.com: **Settings → Pages → Source → Deploy from a branch**, pick `main` and `/ (root)`, then **Save**.
+2. On github.com: **Settings → Pages → Source → Deploy from a branch**, pick `master` and `/ (root)`, then **Save**.
 3. GitHub gives you a URL like `https://<your-username>.github.io/<repo-name>/` within a minute or two.
+
+### Custom domain
+
+The site is live at **elitefantasyhq.com** — the `CNAME` file at the repo root
+tells GitHub Pages which domain to serve. To point it (or a different domain)
+here:
+
+1. At your registrar, add these DNS records for the apex domain:
+   ```
+   A     @     185.199.108.153
+   A     @     185.199.109.153
+   A     @     185.199.110.153
+   A     @     185.199.111.153
+   CNAME www   <your-username>.github.io.
+   ```
+2. On github.com: **Settings → Pages → Custom domain**, enter the domain, save,
+   then check **Enforce HTTPS** once GitHub finishes DNS/cert validation
+   (can take up to a day).
+3. Update `ALLOWED_ORIGIN` in `worker/wrangler.toml` to match (comma-separated
+   if you want the old github.io URL to keep working too), then redeploy the
+   Worker (`wrangler deploy`) — otherwise DERIK's chat requests will get
+   blocked by CORS from the new domain.
 
 ## Updating the data later
 
