@@ -175,15 +175,16 @@ main{
   text-align:center;
 }
 .derik-logo{
-  font-family:'Bebas Neue',sans-serif;
-  font-weight:400;
-  font-size:56px;
-  letter-spacing:1px;
-  color:var(--ink);
-  margin:0 0 6px;
+  font-family:'Inter',sans-serif;
+  font-weight:500;
+  font-size:48px;
+  letter-spacing:0.5px;
+  color:var(--green);
+  margin:0 0 8px;
 }
-.derik-logo span{ color:var(--green); }
 .welcome{
+  font-family:'Inter',sans-serif;
+  font-weight:300;
   font-size:16px;
   color:var(--ink-dim);
   margin:0 0 28px;
@@ -192,15 +193,15 @@ main{
 
 .composer{
   width:100%;
-  max-width:640px;
+  max-width:720px;
   background:var(--tile);
   border:1px solid var(--border);
-  border-radius:18px;
+  border-radius:20px;
   box-shadow:var(--shadow);
   display:flex;
   align-items:flex-end;
-  gap:8px;
-  padding:12px 12px 12px 18px;
+  gap:10px;
+  padding:16px 16px 16px 22px;
 }
 .composer textarea{
   flex:1;
@@ -208,12 +209,13 @@ main{
   background:transparent;
   color:var(--ink);
   font-family:'Inter',sans-serif;
-  font-size:16px;
+  font-weight:300;
+  font-size:17px;
   line-height:1.4;
   resize:none;
   outline:none;
   max-height:160px;
-  padding:6px 0;
+  padding:8px 0;
   overflow-y:hidden;
 }
 .composer textarea::placeholder{ color:var(--ink-faint); }
@@ -233,23 +235,23 @@ main{
 .send-btn:disabled{ background:var(--border); color:var(--ink-faint); cursor:default; }
 
 .fact-card{
-  margin-top:26px;
-  max-width:520px;
-  padding:14px 18px;
+  margin-top:18px;
+  max-width:420px;
+  padding:9px 14px;
   background:var(--green-dim);
-  border-radius:14px;
+  border-radius:11px;
   text-align:left;
 }
 .fact-label{
   font-family:'DM Mono',monospace;
-  font-size:10px;
+  font-size:8.5px;
   letter-spacing:0.7px;
   text-transform:uppercase;
   color:var(--green-ink);
-  margin-bottom:5px;
+  margin-bottom:3px;
   font-weight:500;
 }
-.fact-text{ font-size:13.5px; line-height:1.5; color:var(--ink); }
+.fact-text{ font-size:11px; line-height:1.4; color:var(--ink); }
 .fact-text strong{ color:var(--green-ink); }
 
 .suggestions{
@@ -375,7 +377,7 @@ body.chatting .composer-wrap{ display:flex; }
 
 <main>
   <div class="empty-state" id="emptyState">
-    <h1 class="derik-logo">DE<span>RIK</span></h1>
+    <h1 class="derik-logo">DERIK</h1>
     <p class="welcome">Hey, I'm DERIK. Ask me anything about #ELITE league history &mdash; every game, trade, and draft since 2013.</p>
     <div id="composerSlotCenter"></div>
     <div class="fact-card" id="factCard">

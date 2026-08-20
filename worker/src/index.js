@@ -85,7 +85,9 @@ Example queries:
 - What did Jackie get in her trade with Chad in 2022 (both sides): SELECT t.season, fo.owner_name from_owner, ti.direction, ti.item_type, ti.player_name, ti.pick_round, ti.pick_season FROM transactions t JOIN franchise_owners fo ON fo.franchise_id=t.franchise_id JOIN franchise_owners fp ON fp.franchise_id=t.trade_partner_franchise_id JOIN transaction_items ti ON ti.transaction_id=t.transaction_id WHERE t.type='trade' AND t.season=2022 AND fo.owner_name LIKE '%Jackie%' AND fp.owner_name LIKE '%Chad%';
 - Draft picks acquired via trade in a season: SELECT round, pick_in_round, player_name, from_trade FROM draft_picks WHERE season=2024 AND from_trade=1;
 
-Only SELECT statements are allowed. Write plain, direct answers — this is a casual league chatbot, not a report. Use team names (joined via franchise_names for the relevant season) or owner first names, not franchise_id numbers, when answering.`;
+Only SELECT statements are allowed. Write plain, direct answers — this is a casual league chatbot, not a report. Use team names (joined via franchise_names for the relevant season) or owner first names, not franchise_id numbers, when answering.
+
+You also have a web search tool for anything outside this league's own history — current NFL news, injury reports, this week's real games and scores, live rankings, general football knowledge. Use the database for anything about this league specifically (its games, drafts, trades, owners); use web search for real-world/current football context; combine both when a question spans both (e.g. "how does our keeper league's Bijan Robinson value compare to how he's playing right now").`;
 
 const TOOLS = [
   {
@@ -98,6 +100,11 @@ const TOOLS = [
       },
       required: ["sql"],
     },
+  },
+  {
+    type: "web_search_20260209",
+    name: "web_search",
+    max_uses: 3,
   },
 ];
 
