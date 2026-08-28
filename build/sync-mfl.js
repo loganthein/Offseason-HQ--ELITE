@@ -77,9 +77,17 @@ async function main() {
   const franchiseName = {};
   for (const f of league.league.franchises.franchise) franchiseName[f.id] = f.name;
 
+  // MFL returns player names as "Lastname, Firstname" (e.g. "Walker III,
+  // Kenneth"); team defenses have no comma (e.g. "Green Bay Packers").
+  function toFirstLast(mflName) {
+    if (!mflName.includes(",")) return mflName;
+    const [last, first] = mflName.split(",").map((s) => s.trim());
+    return `${first} ${last}`;
+  }
+
   const playerInfo = {};
   for (const p of players.players.player) {
-    playerInfo[p.id] = { name: p.name, pos: p.position === "Def" ? "D" : p.position };
+    playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position };
   }
 
   const ktcMap = JSON.parse(fs.readFileSync(path.join(ROOT, "ktc_map.json"), "utf8"));
