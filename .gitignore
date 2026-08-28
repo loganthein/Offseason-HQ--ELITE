@@ -1,2 +1,3 @@
 .claude/
 worker/.wrangler/
+build/*.prev.json
