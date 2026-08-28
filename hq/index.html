@@ -613,9 +613,14 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
   <!-- RULES TAB -->
   <section id="tab-rules" class="tab-panel active">
     <div class="card" style="margin-bottom:26px; border-style:dashed;">
-      <div style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--red); margin-bottom:6px;">Coming Soon</div>
-      <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:4px;">New Rules for Next Season</div>
-      <p class="subnote" style="margin:0;">The league is discussing some changes for the upcoming season &mdash; this space will get filled in once they're finalized.</p>
+      <div style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--blue); margin-bottom:6px;">New This Season</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:4px;">Four Rule Changes for the Upcoming Draft</div>
+      <ul class="subnote" style="margin:0; padding-left:18px;">
+        <li>Roster size drops from 15 to <b>14</b>.</li>
+        <li>Undrafted free-agent pickups are now keeper-eligible &mdash; first year costs a flat <b>6th-round</b> pick.</li>
+        <li>Keepers are now capped at <b>2 seasons</b> (Designated Players excluded &mdash; see below).</li>
+        <li>New: the <b>Designated Player</b> rule, a one-time 3rd keeper slot at a flat 10th-round cost.</li>
+      </ul>
     </div>
 
     <div class="section-title">Designation Legend</div>
@@ -627,9 +632,9 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
 
     <div class="section-title" style="margin-top:32px;">How Keepers Work</div>
     <details class="rule" open>
-      <summary>No Year Limit &mdash; Just Escalating Cost</summary>
+      <summary>Keepers Are Capped at 2 Seasons</summary>
       <div class="rule-body">
-        Keepers <b>don't expire after a set number of years.</b> A player stays keeper-eligible for as long as his owner wants him and he still qualifies &mdash; the only thing that changes year to year is what he costs. Each team can carry <b>up to 2</b> keepers at a time.
+        A player can be kept for <b>up to 2 seasons</b> before he goes back into the draft pool &mdash; after that, whichever team wants him has to redraft him like anyone else. This cap applies to normal keepers and the new free-agent keeper rule below; it does <b>not</b> apply to a <b>Designated Player</b> (see below), since that's a one-time, single-season tag to begin with. Each team can still carry <b>up to 2</b> keepers at a time, separate from a possible Designated Player slot.
       </div>
     </details>
     <details class="rule" open>
@@ -637,11 +642,23 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
       <div class="rule-body">
         <ul>
           <li>A drafted player can be kept at <b>one round better</b> than where he was picked (e.g. drafted Rd 8 &rarr; costs Rd 7 to keep).</li>
-          <li>Keep him again the following year and the cost <b>jumps 2 rounds</b> instead of 1 &mdash; marked with an <b>*</b> in the original spreadsheet. Every year kept after that keeps jumping the same way.</li>
+          <li>Keep him again the following year and the cost <b>jumps 2 rounds</b> instead of 1 &mdash; marked with an <b>*</b> in the original spreadsheet. That second kept year is also his last one under the 2-season cap above.</li>
           <li>Players originally drafted in <b>rounds 3&ndash;5</b> are capped at a <b>1st-round</b> keeper cost no matter how far the math would otherwise push them.</li>
           <li>Players drafted in <b>round 1 or 2</b> the prior year <b>can't be kept</b> that first offseason.</li>
         </ul>
         The Keeper Cost column isn't computed live on this page &mdash; it's entered by the commissioner right after each draft using the rules above. If a number here looks off, it's a data entry to fix, not a rule to debug.
+      </div>
+    </details>
+    <details class="rule" open>
+      <summary>Free-Agent Pickups Can Now Be Kept</summary>
+      <div class="rule-body">
+        A player added off waivers/free agency &mdash; never drafted or kept &mdash; is now keeper-eligible too. His first year as a keeper costs a flat <b>6th-round</b> pick, then follows the escalation rules above (one round tighter the next year, then jumping 2 rounds) for as long as the 2-season cap allows. This uses one of a team's <b>2 normal keeper slots</b>, same as any other keeper.
+      </div>
+    </details>
+    <details class="rule" open>
+      <summary>Designated Player &mdash; a One-Time 3rd Keeper Slot</summary>
+      <div class="rule-body">
+        Once per player, a team can tag him as their <b>Designated Player</b> for a single season, keeping him at a flat <b>10th-round</b> cost regardless of what he'd normally cost. This is a <b>3rd keeper slot</b> on top of a team's normal 2 &mdash; it doesn't use one of those spots. Because it's a one-time, single-season tag, it isn't subject to the 2-season keeper cap above &mdash; but a given player can only ever be someone's Designated Player once. Kept again after that, he's a normal keeper (one of the 2 slots, standard escalation, 2-season cap).
       </div>
     </details>
     <details class="rule">
@@ -662,7 +679,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <div class="section-title" style="margin-top:32px;">League Settings</div>
     <div class="settings-grid">
       <div class="settings-cell"><div class="label">Teams</div><div class="value">14</div></div>
-      <div class="settings-cell"><div class="label">Roster Size</div><div class="value">15</div></div>
+      <div class="settings-cell"><div class="label">Roster Size</div><div class="value">14</div></div>
       <div class="settings-cell"><div class="label">Starters</div><div class="value small">QB 1&ndash;2 &middot; RB 2&ndash;4 &middot; WR 2&ndash;4 &middot; TE 1&ndash;3 &middot; DEF 1</div></div>
       <div class="settings-cell"><div class="label">Max at QB</div><div class="value">3</div></div>
       <div class="settings-cell"><div class="label">Waivers</div><div class="value small">Blind bid, FCFS tiebreak &middot; $200 budget</div></div>
