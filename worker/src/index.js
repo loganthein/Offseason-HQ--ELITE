@@ -257,11 +257,31 @@ async function queryMflLive({ type, week }) {
 
 const MFL_TO_ESPN_TEAM = { ARZ: "ARI", BLT: "BAL", CLV: "CLE", HST: "HOU", JAC: "JAX", LVR: "LV", WAS: "WSH" };
 
+// ESPN's unofficial API sometimes returns an HTML block/challenge page
+// instead of JSON for requests that don't look like a browser. A normal
+// User-Agent is usually enough to get past that. Returns the raw text
+// snippet on failure so callers can see what actually came back rather than
+// just a JSON parse error.
+async function espnFetch(url) {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" },
+  });
+  const text = await res.text();
+  try {
+    return { ok: true, status: res.status, data: JSON.parse(text) };
+  } catch {
+    return { ok: false, status: res.status, snippet: text.slice(0, 500) };
+  }
+}
+
 async function fetchEspnScoreboard() {
   try {
-    const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard");
-    if (!res.ok) return {};
-    const data = await res.json();
+    const result = await espnFetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard");
+    if (!result.ok) {
+      console.error("ESPN scoreboard: non-JSON response", result.status, result.snippet);
+      return {};
+    }
+    const data = result.data;
     const byTeam = {};
     for (const event of data.events || []) {
       const comp = event.competitions?.[0];
@@ -393,17 +413,25 @@ async function handleMflExploreEspn(request, env) {
   const url = new URL(request.url);
   const date = url.searchParams.get("date"); // YYYYMMDD, a past completed game to inspect without a live one
   const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${date ? `?dates=${date}` : ""}`;
-  const sbRes = await fetch(scoreboardUrl);
-  const scoreboard = await sbRes.json();
-  const completed = (scoreboard.events || []).find((e) => e.competitions?.[0]?.status?.type?.completed);
-  if (!completed) {
-    return new Response(JSON.stringify({ error: "No completed game found for that date", scoreboard }), {
+  const sb = await espnFetch(scoreboardUrl);
+  if (!sb.ok) {
+    return new Response(JSON.stringify({ error: "ESPN scoreboard didn't return JSON", status: sb.status, snippet: sb.snippet }), {
       headers: { "content-type": "application/json", ...corsHeaders(env, request) },
     });
   }
-  const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${completed.id}`);
-  const summary = await summaryRes.json();
-  return new Response(JSON.stringify({ eventId: completed.id, name: completed.name, boxscore: summary.boxscore || null }), {
+  const completed = (sb.data.events || []).find((e) => e.competitions?.[0]?.status?.type?.completed);
+  if (!completed) {
+    return new Response(JSON.stringify({ error: "No completed game found for that date", scoreboard: sb.data }), {
+      headers: { "content-type": "application/json", ...corsHeaders(env, request) },
+    });
+  }
+  const summary = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${completed.id}`);
+  if (!summary.ok) {
+    return new Response(JSON.stringify({ error: "ESPN summary didn't return JSON", status: summary.status, snippet: summary.snippet }), {
+      headers: { "content-type": "application/json", ...corsHeaders(env, request) },
+    });
+  }
+  return new Response(JSON.stringify({ eventId: completed.id, name: completed.name, boxscore: summary.data.boxscore || null }), {
     headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
   });
 }
