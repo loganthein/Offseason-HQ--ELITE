@@ -240,6 +240,70 @@ h1{
   cursor:pointer;
 }
 
+/* ---------- League-wide scoreboard strip ---------- */
+.league-strip{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:2px 2px 4px;
+  margin-bottom:16px;
+  scrollbar-width:none;
+}
+.league-strip::-webkit-scrollbar{ display:none; }
+.strip-pill{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:6px 12px;
+  cursor:pointer;
+  font-family:'DM Mono',monospace;
+  font-size:12px;
+  color:var(--ink-dim);
+}
+.strip-pill.active{ border-color:var(--red); }
+.strip-pill:hover{ border-color:var(--ink-faint); }
+.strip-avatar{
+  width:20px; height:20px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:9px;
+  color:#fff;
+  flex-shrink:0;
+}
+.strip-score{ font-weight:500; color:var(--ink); min-width:24px; text-align:center; }
+.strip-score.lead{ color:var(--good); font-weight:700; }
+.strip-vs{ color:var(--ink-faint); font-size:10px; }
+
+/* ---------- Projections / win probability ---------- */
+.matchup-team .proj{ font-family:'DM Mono',monospace; font-size:10.5px; color:var(--ink-faint); }
+.matchup-winprob{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 16px 14px;
+  font-family:'DM Mono',monospace;
+  font-size:10.5px;
+  color:var(--ink-faint);
+}
+.matchup-winprob .wp-pct{ min-width:32px; }
+.matchup-winprob .wp-pct.away{ text-align:right; }
+.winprob-bar{
+  flex:1;
+  height:6px;
+  border-radius:4px;
+  overflow:hidden;
+  display:flex;
+  background:var(--border-soft);
+}
+.winprob-bar .home-fill{ background:var(--blue); }
+.winprob-bar .away-fill{ background:var(--red); }
+.matchup-winprob.pending{ color:var(--ink-faint); font-style:italic; }
+
 /* ---------- Matchup carousel ---------- */
 .carousel-wrap{ position:relative; }
 .carousel{
@@ -448,6 +512,7 @@ a.p-name:hover{ text-decoration:underline; }
 
   <div id="banner"></div>
   <div id="weekNav"></div>
+  <div id="leagueStrip"></div>
   <div id="content"></div>
 </div>
 
@@ -480,6 +545,8 @@ function demoPlayer(name, pos, nflTeam, points, contextText, live, statLine){
 }
 const DEMO_MATCHUPS = [
   {
+    projHome: 101.4,
+    projAway: 104.8,
     home: { franchiseId: 'd1', team: 'The SHIELD', starters: [
       demoPlayer('Daniel Jones', 'QB', 'IND', 18.2, 'Final · IND 27-20', false, '255 YD, 2 TD, 1 INT'),
       demoPlayer('Kenneth Walker III', 'RB', 'SEA', 14.6, 'Q3 8:42', true, '88 YD, 1 TD, 3 REC'),
@@ -504,6 +571,8 @@ const DEMO_MATCHUPS = [
     ] },
   },
   {
+    projHome: 98.2,
+    projAway: 93.6,
     home: { franchiseId: 'd3', team: 'Crusty Baguettes', starters: [
       demoPlayer('Kirk Cousins', 'QB', 'ATL', 12.1, 'Final · ATL 20-27', false, '198 YD, 1 TD, 1 INT'),
       demoPlayer('Chuba Hubbard', 'RB', 'CAR', 8.4, 'Q4 1:12', true, '52 YD, 1 TD'),
@@ -542,6 +611,7 @@ function renderDemo(){
     <select disabled><option>Week 1 (demo)</option></select>
     <button disabled>&rsaquo;</button>
   </div>`;
+  renderLeagueStrip(DEMO_MATCHUPS, computedByPlayerId);
   renderCarousel(DEMO_MATCHUPS, computedByPlayerId);
 }
 
@@ -931,6 +1001,24 @@ function teamScore(team, computedByPlayerId){
   return team.starters.reduce((sum, p) => sum + ((computedByPlayerId[p.id] && computedByPlayerId[p.id].points) || 0), 0);
 }
 
+// Win% here is a simple projected-total ratio (homeProj / (homeProj +
+// awayProj)), not a real statistical model — placeholder until we have a
+// real projections source to compute something more rigorous from (e.g.
+// factoring in this league's actual week-to-week score variance).
+function winProbHtml(m){
+  if(m.projHome == null || m.projAway == null){
+    return `<div class="matchup-winprob pending">Win% needs live projections &mdash; not wired up yet</div>`;
+  }
+  const total = m.projHome + m.projAway;
+  const homePct = total > 0 ? Math.round((m.projHome / total) * 100) : 50;
+  const awayPct = 100 - homePct;
+  return `<div class="matchup-winprob">
+    <span class="wp-pct home">${homePct}%</span>
+    <div class="winprob-bar"><span class="home-fill" style="width:${homePct}%"></span><span class="away-fill" style="width:${awayPct}%"></span></div>
+    <span class="wp-pct away">${awayPct}%</span>
+  </div>`;
+}
+
 function renderMatchup(m, computedByPlayerId){
   const homeScore = teamScore(m.home, computedByPlayerId);
   const awayScore = teamScore(m.away, computedByPlayerId);
@@ -946,6 +1034,7 @@ function renderMatchup(m, computedByPlayerId){
           <span class="name">${escapeHtml(m.home.team)}</span>
         </div>
         <span class="score">${homeScore.toFixed(1)}</span>
+        ${m.projHome != null ? `<span class="proj">Proj ${m.projHome.toFixed(1)}</span>` : ''}
       </div>
       <span class="matchup-vs">VS</span>
       <div class="matchup-team away${awayLead ? ' leading' : ''}">
@@ -954,10 +1043,44 @@ function renderMatchup(m, computedByPlayerId){
           <span class="name">${escapeHtml(m.away.team)}</span>
         </div>
         <span class="score">${awayScore.toFixed(1)}</span>
+        ${m.projAway != null ? `<span class="proj">Proj ${m.projAway.toFixed(1)}</span>` : ''}
       </div>
     </div>
+    ${winProbHtml(m)}
     <div class="starters-table">${rows || '<div class="starter-row">No starters yet</div>'}</div>
   </div></div>`;
+}
+
+function renderLeagueStrip(matchups, computedByPlayerId){
+  const strip = document.getElementById('leagueStrip');
+  if(!matchups.length){ strip.innerHTML = ''; return; }
+  strip.innerHTML = `<div class="league-strip">${matchups.map((m, i) => {
+    const homeScore = teamScore(m.home, computedByPlayerId);
+    const awayScore = teamScore(m.away, computedByPlayerId);
+    return `<button class="strip-pill${i === slideIndex ? ' active' : ''}" data-i="${i}">
+      <span class="strip-avatar" style="background:${avatarColor(m.home.team)}">${escapeHtml(initials(m.home.team))}</span>
+      <span class="strip-score${homeScore > awayScore ? ' lead' : ''}">${homeScore.toFixed(1)}</span>
+      <span class="strip-vs">&middot;</span>
+      <span class="strip-score${awayScore > homeScore ? ' lead' : ''}">${awayScore.toFixed(1)}</span>
+      <span class="strip-avatar" style="background:${avatarColor(m.away.team)}">${escapeHtml(initials(m.away.team))}</span>
+    </button>`;
+  }).join('')}</div>`;
+  strip.querySelectorAll('.strip-pill').forEach((btn) => {
+    btn.onclick = () => scrollToSlide(Number(btn.dataset.i));
+  });
+}
+
+// Shared by the league strip, the carousel's own dots, and its arrows —
+// whichever one triggers navigation, all three stay in sync.
+function scrollToSlide(i){
+  const carouselEl = document.getElementById('carousel');
+  if(!carouselEl) return;
+  const slides = carouselEl.querySelectorAll('.matchup-slide');
+  if(!slides.length) return;
+  slideIndex = Math.max(0, Math.min(slides.length - 1, i));
+  slides[slideIndex].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  document.querySelectorAll('.dotbtn').forEach((b, idx) => b.classList.toggle('active', idx === slideIndex));
+  document.querySelectorAll('.strip-pill').forEach((b, idx) => b.classList.toggle('active', idx === slideIndex));
 }
 
 function renderWeekNav(data){
@@ -992,14 +1115,10 @@ function renderCarousel(matchups, computedByPlayerId){
 
   const carouselEl = document.getElementById('carousel');
   const slides = carouselEl.querySelectorAll('.matchup-slide');
-  const goTo = (i) => {
-    slideIndex = Math.max(0, Math.min(matchups.length - 1, i));
-    slides[slideIndex].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  };
-  document.getElementById('arrowPrev').onclick = () => goTo(slideIndex - 1);
-  document.getElementById('arrowNext').onclick = () => goTo(slideIndex + 1);
+  document.getElementById('arrowPrev').onclick = () => scrollToSlide(slideIndex - 1);
+  document.getElementById('arrowNext').onclick = () => scrollToSlide(slideIndex + 1);
   document.querySelectorAll('.dotbtn').forEach((btn) => {
-    btn.onclick = () => goTo(Number(btn.dataset.i));
+    btn.onclick = () => scrollToSlide(Number(btn.dataset.i));
   });
   let scrollTimer;
   carouselEl.onscroll = () => {
@@ -1014,10 +1133,11 @@ function renderCarousel(matchups, computedByPlayerId){
       if(closest !== slideIndex){
         slideIndex = closest;
         document.querySelectorAll('.dotbtn').forEach((b, i) => b.classList.toggle('active', i === slideIndex));
+        document.querySelectorAll('.strip-pill').forEach((b, i) => b.classList.toggle('active', i === slideIndex));
       }
     }, 100);
   };
-  goTo(Math.min(slideIndex, matchups.length - 1));
+  scrollToSlide(Math.min(slideIndex, matchups.length - 1));
 }
 
 function renderBanner(data){
@@ -1074,6 +1194,7 @@ async function loadEspnAndRender(data){
     computedByPlayerId[p.id] = computePoints(p, espnCache.gamesByTeam, data.rules);
   }
 
+  renderLeagueStrip(data.matchups, computedByPlayerId);
   renderCarousel(data.matchups, computedByPlayerId);
 }
 
