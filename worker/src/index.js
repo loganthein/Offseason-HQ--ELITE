@@ -255,13 +255,19 @@ async function queryMflLive({ type, week }) {
 // against, so this may need a field-name fix once we see live output. Use
 // ?debug=1 to get the raw fetched data back instead of the merged view.
 
-const MFL_TO_ESPN_TEAM = { ARZ: "ARI", BLT: "BAL", CLV: "CLE", HST: "HOU", JAC: "JAX", LVR: "LV", WAS: "WSH" };
-
 // ESPN's unofficial API sometimes returns an HTML block/challenge page
 // instead of JSON for requests that don't look like a browser. A normal
 // User-Agent is usually enough to get past that. Returns the raw text
 // snippet on failure so callers can see what actually came back rather than
 // just a JSON parse error.
+//
+// NOTE: confirmed via live testing that ESPN's edge (Akamai) blocks requests
+// from Cloudflare Workers' IPs with a 403, even with a browser User-Agent —
+// this is a datacenter/IP-reputation block, not a header check, so there's
+// no server-side workaround. All real ESPN calls (live scores, box scores)
+// happen client-side in live/template.html instead, where they work fine
+// from a normal browser. espnFetch/handleMflExploreEspn are kept only for
+// the temporary /api/espn-explore diagnostic endpoint.
 async function espnFetch(url) {
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" },
@@ -274,49 +280,21 @@ async function espnFetch(url) {
   }
 }
 
-async function fetchEspnScoreboard() {
-  try {
-    const result = await espnFetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard");
-    if (!result.ok) {
-      console.error("ESPN scoreboard: non-JSON response", result.status, result.snippet);
-      return {};
-    }
-    const data = result.data;
-    const byTeam = {};
-    for (const event of data.events || []) {
-      const comp = event.competitions?.[0];
-      if (!comp) continue;
-      const status = comp.status || {};
-      const situation = comp.situation || {};
-      const [a, b] = comp.competitors || [];
-      if (!a || !b) continue;
-      const build = (self, opp) => ({
-        opponent: opp.team?.abbreviation ?? null,
-        quarter: status.period ?? null,
-        clock: status.displayClock ?? null,
-        state: status.type?.state ?? null, // "pre" | "in" | "post"
-        final: !!status.type?.completed,
-        redZone: !!situation.isRedZone,
-        teamScore: Number(self.score) || 0,
-        oppScore: Number(opp.score) || 0,
-      });
-      if (a.team?.abbreviation) byTeam[a.team.abbreviation] = build(a, b);
-      if (b.team?.abbreviation) byTeam[b.team.abbreviation] = build(b, a);
-    }
-    return byTeam;
-  } catch (e) {
-    console.error("ESPN scoreboard fetch failed:", e.message);
-    return {}; // live fantasy scores should never break just because this did
-  }
-}
-
-function extractMatchups(scheduleData) {
+// Pulls the matchup list for one week out of a full-season TYPE=schedule
+// response (fetched once, no W param, so it covers every week).
+function extractMatchupsForWeek(scheduleData, week) {
   const s = scheduleData?.schedule;
   if (!s) return [];
-  const weekly = Array.isArray(s.weeklySchedule) ? s.weeklySchedule[0] : s.weeklySchedule;
-  const matchups = weekly?.matchup ?? s.matchup;
+  const weeklyArr = Array.isArray(s.weeklySchedule) ? s.weeklySchedule : s.weeklySchedule ? [s.weeklySchedule] : [];
+  const weekly = weeklyArr.find((w) => String(w.week) === String(week)) || weeklyArr[0];
+  const matchups = weekly?.matchup;
   if (!matchups) return [];
   return Array.isArray(matchups) ? matchups : [matchups];
+}
+
+function countWeeks(scheduleData) {
+  const weekly = scheduleData?.schedule?.weeklySchedule;
+  return Array.isArray(weekly) ? weekly.length : weekly ? 1 : 0;
 }
 
 function extractLiveFranchises(liveData) {
@@ -385,29 +363,11 @@ function parseScoringRules(rulesData) {
   return byPosition;
 }
 
-// stats: {EVENT_CODE: count, ...} for per-unit events (PY, RY, CC, SK, ...).
-// For FG specifically, pass individual attempt distances instead, since the
-// point value depends on each kick's distance, not the total made count.
-function scoreStatLine(stats, fgDistances, eventRules) {
-  let total = 0;
-  for (const [event, count] of Object.entries(stats || {})) {
-    const tiers = eventRules[event];
-    if (!tiers || !count) continue;
-    for (const tier of tiers) {
-      if (count < tier.min || count > tier.max) continue;
-      total += tier.perUnit ? tier.points * count : tier.points;
-      if (!tier.perUnit) break; // flat/tiered ranges are mutually exclusive
-    }
-  }
-  const fgTiers = eventRules.FG;
-  if (fgTiers) {
-    for (const dist of fgDistances || []) {
-      const tier = fgTiers.find((t) => dist >= t.min && dist <= t.max);
-      if (tier) total += tier.points;
-    }
-  }
-  return total;
-}
+// The rules parsed here are shipped to the client (via handleLiveScores'
+// `rules` field) and applied there, not in the Worker: actually computing
+// fantasy points from event counts (scoreStatLine) happens client-side in
+// live/template.html, next to the ESPN stats it's fed from — ESPN calls are
+// blocked from the Worker's IPs, so that's where the stats have to live too.
 
 async function handleMflExploreEspn(request, env) {
   const url = new URL(request.url);
@@ -436,39 +396,37 @@ async function handleMflExploreEspn(request, env) {
   });
 }
 
+// Confirmed lineups + our own scoring rules, from MFL only — nothing about
+// live game state or point values comes from here. MFL's liveScoring is
+// still polled (rather than fetched once) so we catch late scratches/lineup
+// swaps, but its per-player scores are discarded entirely: the frontend
+// computes every point itself from ESPN stats using `rules` below, per the
+// league's real MFL scoring rules (parsed from TYPE=rules).
 async function handleLiveScores(request, env) {
   const url = new URL(request.url);
   const weekParam = url.searchParams.get("week");
   const debug = url.searchParams.get("debug") === "1";
 
-  const [league, live, espn] = await Promise.all([
+  const [league, rulesData, fullSchedule, live] = await Promise.all([
     mflFetch("league"),
+    mflFetch("rules"),
+    mflFetch("schedule"),
     mflFetch("liveScoring", weekParam ? `&W=${weekParam}` : ""),
-    fetchEspnScoreboard(),
   ]);
 
   // MFL returns a normal 200 with an {error} body (not an HTTP error) when
   // live scoring isn't available yet (preseason, or between weeks).
   const liveUnavailable = !!live?.error;
-  const week = live?.liveScoring?.week || weekParam || null;
-
-  if (!week && !debug) {
-    return new Response(
-      JSON.stringify({ status: "unavailable", message: live?.error?.$t || "Live scoring isn't available right now.", week: null, matchups: [] }),
-      { headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) } }
-    );
-  }
-
-  const schedule = week ? await mflFetch("schedule", `&W=${week}`) : { schedule: {} };
+  const week = live?.liveScoring?.week || weekParam || "1";
+  const totalWeeks = countWeeks(fullSchedule);
+  const rules = parseScoringRules(rulesData);
 
   const franchiseNames = {};
   for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
 
   const liveFranchises = extractLiveFranchises(live);
-  const scoreById = {};
   const playersById = {};
   for (const f of liveFranchises) {
-    scoreById[f.id] = Number(f.score) || 0;
     const players = f.players?.player;
     playersById[f.id] = Array.isArray(players) ? players : players ? [players] : [];
   }
@@ -482,11 +440,6 @@ async function handleLiveScores(request, env) {
     }
   }
 
-  function gameContextFor(nflTeam) {
-    if (!nflTeam) return null;
-    return espn[MFL_TO_ESPN_TEAM[nflTeam] || nflTeam] || null;
-  }
-
   function buildTeam(franchiseId) {
     const starters = (playersById[franchiseId] || []).map((p) => {
       const info = playerInfo[p.id] || {};
@@ -494,16 +447,14 @@ async function handleLiveScores(request, env) {
         id: p.id,
         name: info.name || `Player ${p.id}`,
         pos: info.pos || null,
-        points: Number(p.score) || 0,
-        status: p.status || null,
         nflTeam: info.nflTeam || null,
-        game: gameContextFor(info.nflTeam),
+        mflStatus: p.status || null, // unconfirmed field meaning, kept for reference only
       };
     });
-    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, score: scoreById[franchiseId] || 0, starters };
+    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, starters };
   }
 
-  const matchups = extractMatchups(schedule)
+  const matchups = extractMatchupsForWeek(fullSchedule, week)
     .map((m) => {
       const sides = Array.isArray(m.franchise) ? m.franchise : m.franchise ? [m.franchise] : [];
       if (sides.length < 2) return null;
@@ -514,8 +465,8 @@ async function handleLiveScores(request, env) {
     .filter(Boolean);
 
   const body = debug
-    ? { week, liveUnavailable, raw: { league, live, schedule, espn } }
-    : { status: liveUnavailable ? "not_started" : "live", week, matchups };
+    ? { week, totalWeeks, liveUnavailable, rules, raw: { league, rulesData, fullSchedule, live } }
+    : { status: liveUnavailable ? "not_started" : "live", week: Number(week), totalWeeks, season: MFL_SEASON, rules, matchups };
 
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },

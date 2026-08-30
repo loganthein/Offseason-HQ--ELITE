@@ -207,12 +207,92 @@ h1{
 }
 .empty h2{ font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--ink); margin:0 0 8px; text-transform:uppercase; }
 
-/* ---------- Matchup grid ---------- */
-.matchup-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
-  gap:14px;
+/* ---------- Week selector ---------- */
+.week-nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:16px;
 }
+.week-nav button{
+  width:32px; height:32px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--tile);
+  color:var(--ink);
+  font-size:16px;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.week-nav button:disabled{ opacity:0.35; cursor:default; }
+.week-nav button:not(:disabled):hover{ border-color:var(--ink-faint); }
+.week-nav select{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:22px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  background:var(--tile);
+  color:var(--ink);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:4px 14px;
+  cursor:pointer;
+}
+
+/* ---------- Matchup carousel ---------- */
+.carousel-wrap{ position:relative; }
+.carousel{
+  display:flex;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  gap:14px;
+  padding:2px 2px 6px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.carousel::-webkit-scrollbar{ display:none; }
+.matchup-slide{
+  flex:0 0 100%;
+  scroll-snap-align:center;
+  min-width:0;
+}
+.carousel-arrow{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:36px; height:36px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--tile);
+  color:var(--ink);
+  font-size:18px;
+  cursor:pointer;
+  box-shadow:var(--shadow);
+  display:flex; align-items:center; justify-content:center;
+  z-index:2;
+}
+.carousel-arrow.prev{ left:-14px; }
+.carousel-arrow.next{ right:-14px; }
+.carousel-arrow:disabled{ opacity:0; pointer-events:none; }
+@media (max-width: 720px){ .carousel-arrow{ display:none; } }
+
+.carousel-dots{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin-top:10px;
+}
+.carousel-dots .dotbtn{
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--border);
+  border:none;
+  padding:0;
+  cursor:pointer;
+}
+.carousel-dots .dotbtn.active{ background:var(--red); width:16px; border-radius:4px; }
+
 .matchup-card{
   background:var(--tile);
   border:1px solid var(--border);
@@ -224,15 +304,14 @@ h1{
   display:grid;
   grid-template-columns:1fr auto 1fr;
   align-items:center;
-  padding:14px 16px;
+  padding:16px;
   gap:10px;
   border-bottom:1px solid var(--border-soft);
-  cursor:pointer;
 }
 .matchup-team{ display:flex; flex-direction:column; gap:2px; min-width:0; }
 .matchup-team.away{ align-items:flex-end; text-align:right; }
 .matchup-team .name{
-  font-size:13px;
+  font-size:13.5px;
   font-weight:600;
   color:var(--ink-dim);
   white-space:nowrap;
@@ -242,17 +321,15 @@ h1{
 .matchup-team.leading .name{ color:var(--ink); }
 .matchup-team .score{
   font-family:'Bebas Neue',sans-serif;
-  font-size:34px;
+  font-size:38px;
   letter-spacing:0.3px;
   color:var(--ink-faint);
   line-height:1;
 }
 .matchup-team.leading .score{ color:var(--good); }
 .matchup-vs{ font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:1px; }
-.matchup-toggle{ text-align:center; font-family:'DM Mono',monospace; font-size:10px; color:var(--ink-faint); margin-top:2px; grid-column:1/-1; }
 
-.starters{ display:none; padding:8px 0; }
-.starters.open{ display:grid; grid-template-columns:1fr 1fr; }
+.starters{ display:grid; grid-template-columns:1fr 1fr; padding:8px 0; }
 .starters .side{ padding:6px 12px; }
 .starters .side + .side{ border-left:1px solid var(--border-soft); }
 .starter-row{
@@ -287,7 +364,7 @@ h1{
 .starter-points{ font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--ink); min-width:38px; text-align:right; }
 
 @media (max-width: 480px){
-  .starters.open{ grid-template-columns:1fr; }
+  .starters{ grid-template-columns:1fr; }
   .starters .side + .side{ border-left:none; border-top:1px solid var(--border-soft); }
   h1{ font-size:26px; }
   .matchup-team .score{ font-size:28px; }
@@ -311,12 +388,23 @@ h1{
   </header>
 
   <div id="banner"></div>
+  <div id="weekNav"></div>
   <div id="content"></div>
 </div>
 
 <script>
 const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
 const POLL_MS = 25000;
+
+// ESPN's unofficial "site API" — blocked from Cloudflare Workers (403 from
+// Akamai) but works fine from a real browser, so every ESPN call happens
+// here client-side. The Worker only ever supplies confirmed lineups + our
+// scoring rules from MFL; every point value below is computed in this file.
+const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
+const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary";
+// MFL still uses some legacy NFL abbreviations that differ from ESPN's.
+const MFL_TO_ESPN_TEAM = { ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH" };
+const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" };
 
 /* ---------- Theme (matches the rest of the site) ---------- */
 const THEMES = ['auto','light','dark'];
@@ -336,13 +424,262 @@ function cycleTheme(){
 }
 applyTheme(getStoredTheme());
 
-/* ---------- Rendering ---------- */
-const openMatchups = new Set(); // franchiseId pair keys the user has expanded, preserved across polls
-
+/* ---------- Helpers ---------- */
 function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function normalizeName(s){
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
+    .replace(/[^a-z\s'-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function lastNameOf(normName){
+  const parts = normName.split(' ');
+  return parts[parts.length - 1] || '';
+}
+
+/* ---------- MFL scoring, computed client-side from ESPN stats ---------- */
+// Mirrors worker/src/index.js scoreStatLine() exactly — same {event: count}
+// input shape, same tiered/per-unit rule format from TYPE=rules.
+function scoreStatLine(stats, fgDistances, eventRules){
+  let total = 0;
+  for(const [event, count] of Object.entries(stats || {})){
+    const tiers = eventRules && eventRules[event];
+    if(!tiers || !count) continue;
+    for(const tier of tiers){
+      if(count < tier.min || count > tier.max) continue;
+      total += tier.perUnit ? tier.points * count : tier.points;
+      if(!tier.perUnit) break;
+    }
+  }
+  const fgTiers = eventRules && eventRules.FG;
+  if(fgTiers){
+    for(const dist of fgDistances || []){
+      const tier = fgTiers.find((t) => dist >= t.min && dist <= t.max);
+      if(tier) total += tier.points;
+    }
+  }
+  return total;
+}
+
+/* ---------- ESPN: scoreboard + box scores ---------- */
+let espnCache = { week: null, gamesByTeam: {}, boxByEvent: {} };
+
+async function espnJson(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('ESPN ' + res.status);
+  return res.json();
+}
+
+// One scoreboard call for the whole NFL week gives us every game's state
+// (quarter/clock/redzone/score) keyed by team abbreviation.
+async function loadEspnScoreboard(nflWeek, season){
+  const url = `${ESPN_SCOREBOARD}?week=${nflWeek}&year=${season}&seasontype=2`;
+  const data = await espnJson(url);
+  const gamesByTeam = {};
+  for(const event of data.events || []){
+    const comp = event.competitions && event.competitions[0];
+    if(!comp) continue;
+    const status = comp.status || {};
+    const situation = comp.situation || {};
+    const [a, b] = comp.competitors || [];
+    if(!a || !b) continue;
+    const build = (self, opp) => ({
+      eventId: event.id,
+      opponent: opp.team && opp.team.abbreviation,
+      quarter: status.period ?? null,
+      clock: status.displayClock ?? null,
+      state: status.type && status.type.state, // "pre" | "in" | "post"
+      final: !!(status.type && status.type.completed),
+      redZone: !!situation.isRedZone,
+      teamScore: Number(self.score) || 0,
+      oppScore: Number(opp.score) || 0,
+      teamId: self.team && self.team.id,
+      oppId: opp.team && opp.team.id,
+    });
+    if(a.team && a.team.abbreviation) gamesByTeam[a.team.abbreviation] = build(a, b);
+    if(b.team && b.team.abbreviation) gamesByTeam[b.team.abbreviation] = build(b, a);
+  }
+  return gamesByTeam;
+}
+
+// Field goals are scored by distance tier, but ESPN's box score only gives
+// an aggregate "made/attempted" string — so distances come from the play
+// log instead, matched back to the kicker by the "X.Lastname" in the text.
+function extractFieldGoalPlays(summary){
+  const drives = (summary.drives && summary.drives.previous) || [];
+  const kicks = [];
+  for(const drive of drives){
+    for(const play of (drive.plays || [])){
+      const typeText = play.type && play.type.text;
+      if(typeText !== 'Field Goal Good') continue;
+      const desc = play.text || '';
+      const nameMatch = desc.match(/^([A-Z][A-Za-z'-]*\.?\s?[A-Z][A-Za-z'-]+)/);
+      const distMatch = desc.match(/(\d+)\s+yard field goal/i);
+      const distance = play.statYardage != null ? Number(play.statYardage) : (distMatch ? Number(distMatch[1]) : null);
+      if(distance != null) kicks.push({ rawName: nameMatch ? nameMatch[1] : '', distance });
+    }
+  }
+  return kicks;
+}
+
+// Builds a per-player stat index for one game: normalized name -> merged
+// {labelValue(category,label)} lookup across every stat category ESPN
+// returns for that player (a WR can show up under both receiving and
+// rushing, etc).
+function buildPlayerIndex(summary){
+  const index = {}; // normName -> { categories: {name: {labels, values}}, teamAbbr }
+  const teamEntries = (summary.boxscore && summary.boxscore.players) || [];
+  for(const teamEntry of teamEntries){
+    const teamAbbr = teamEntry.team && teamEntry.team.abbreviation;
+    for(const cat of teamEntry.statistics || []){
+      for(const ath of cat.athletes || []){
+        const displayName = ath.athlete && ath.athlete.displayName;
+        if(!displayName) continue;
+        const key = normalizeName(displayName);
+        if(!index[key]) index[key] = { categories: {}, teamAbbr };
+        index[key].categories[cat.name] = { labels: cat.labels || [], values: ath.stats || [] };
+      }
+    }
+  }
+  return index;
+}
+
+function labelValue(categories, catName, label){
+  const cat = categories[catName];
+  if(!cat) return null;
+  const idx = cat.labels.indexOf(label);
+  if(idx === -1) return null;
+  return cat.values[idx];
+}
+
+function findPlayer(index, mflName){
+  const norm = normalizeName(mflName);
+  if(index[norm]) return index[norm];
+  // Fallback: last name + first-initial match, for minor formatting drift
+  // between MFL's "Firstname Lastname" and ESPN's displayName.
+  const [first, ...rest] = norm.split(' ');
+  const last = rest[rest.length - 1] || first;
+  const firstInitial = (first || '')[0];
+  for(const key of Object.keys(index)){
+    if(lastNameOf(key) === last && key[0] === firstInitial) return index[key];
+  }
+  return null;
+}
+
+// Offense (QB/RB/WR/TE/PK): computed directly from the player's own box
+// score stat lines. FG/EP handled separately since MFL scores them by
+// distance/count rather than a simple per-yard rate.
+function offenseStats(categories){
+  const stats = {};
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const passYds = num(labelValue(categories, 'passing', 'YDS'));
+  const passTD = num(labelValue(categories, 'passing', 'TD'));
+  const passInt = num(labelValue(categories, 'passing', 'INT'));
+  if(passYds) stats.PY = passYds;
+  if(passTD) stats['#P'] = passTD;
+  if(passInt) stats.IN = passInt;
+
+  const rushYds = num(labelValue(categories, 'rushing', 'YDS'));
+  const rushTD = num(labelValue(categories, 'rushing', 'TD'));
+  if(rushYds) stats.RY = rushYds;
+  if(rushTD) stats['#R'] = rushTD;
+
+  const rec = num(labelValue(categories, 'receiving', 'REC'));
+  const recYds = num(labelValue(categories, 'receiving', 'YDS'));
+  const recTD = num(labelValue(categories, 'receiving', 'TD'));
+  if(rec) stats.CC = rec;
+  if(recYds) stats.CY = recYds;
+  if(recTD) stats['#C'] = recTD;
+
+  const fumLost = num(labelValue(categories, 'fumbles', 'LOST'));
+  if(fumLost) stats.FL = fumLost;
+
+  const krTD = num(labelValue(categories, 'kickReturns', 'TD'));
+  const prTD = num(labelValue(categories, 'puntReturns', 'TD'));
+  if(krTD) stats['#KT'] = krTD;
+  if(prTD) stats['#UT'] = prTD;
+
+  return stats;
+}
+
+// Defense (Def/DST slot): points-allowed, sacks and interceptions come
+// straight out of ESPN's structured box score, so those are exact. Forced
+// fumbles, blocked kicks, safeties and D/ST touchdowns aren't exposed as
+// clean per-team fields in this box score — rather than guess at them from
+// play-by-play text and risk being wrong, they're left at 0 for now. Known
+// gap, flagged rather than silently approximated.
+function defenseStats(summary, teamAbbr, teamId, oppScore){
+  const stats = {};
+  const teamEntries = (summary.boxscore && summary.boxscore.players) || [];
+  const teamEntry = teamEntries.find((t) => (t.team && (t.team.id === teamId || t.team.abbreviation === teamAbbr)));
+  const catByName = {};
+  for(const cat of (teamEntry && teamEntry.statistics) || []) catByName[cat.name] = cat;
+  const sumLabel = (catName, label) => {
+    const cat = catByName[catName];
+    if(!cat) return 0;
+    const idx = cat.labels.indexOf(label);
+    if(idx === -1) return 0;
+    let sum = 0;
+    for(const ath of cat.athletes || []){
+      const v = parseFloat(ath.stats && ath.stats[idx]);
+      if(!Number.isNaN(v)) sum += v;
+    }
+    return sum;
+  };
+  const sacks = sumLabel('defensive', 'SACKS');
+  if(sacks) stats.SK = sacks;
+  const picks = sumLabel('interceptions', 'INT');
+  if(picks) stats.IC = picks;
+  if(oppScore != null) stats.TPA = oppScore; // tiered range lookup happens in scoreStatLine via FG-style bare-number ranges
+  return stats;
+}
+
+/* ---------- Per-player point computation ---------- */
+function computePoints(player, gamesByTeam, rules){
+  const espnAbbr = player.nflTeam ? (MFL_TO_ESPN_TEAM[player.nflTeam] || player.nflTeam) : null;
+  const game = espnAbbr ? gamesByTeam[espnAbbr] : null;
+  const ruleKey = POS_TO_RULE_KEY[player.pos] || player.pos;
+  const eventRules = rules && rules[ruleKey];
+  const result = { points: 0, game: game || null };
+  if(!game || !game.eventId || !eventRules) return result;
+
+  const box = espnCache.boxByEvent[game.eventId];
+  if(!box) return result; // box score for this game hasn't loaded yet
+
+  if(player.pos === 'D'){
+    const stats = defenseStats(box.summary, espnAbbr, game.teamId, game.oppScore);
+    result.points = scoreStatLine(stats, [], eventRules);
+    return result;
+  }
+
+  const rec = findPlayer(box.playerIndex, player.name);
+  if(!rec) return result; // inactive, bye, or a name we couldn't match
+
+  const stats = offenseStats(rec.categories);
+  if(player.pos === 'PK'){
+    const xp = Number(labelValue(rec.categories, 'kicking', 'XP')?.split('/')[0]) || 0;
+    if(xp) stats.EP = xp;
+  }
+  const fgDistances = player.pos === 'PK'
+    ? box.fieldGoals.filter((k) => lastNameOf(normalizeName(k.rawName)) === lastNameOf(normalizeName(player.name))).map((k) => k.distance)
+    : [];
+  result.points = scoreStatLine(stats, fgDistances, eventRules);
+  return result;
+}
+
+/* ---------- State ---------- */
+let currentData = null; // last /api/live-scores payload
+let currentWeek = null;
+let slideIndex = 0;
+
+/* ---------- Rendering ---------- */
 function gameLabel(game){
   if(!game) return '';
   if(game.final) return 'Final';
@@ -354,85 +691,187 @@ function gameLabel(game){
   return '';
 }
 
-function starterRow(p){
+function starterRow(p, computed){
   const pos = p.pos || '';
+  const c = computed || { points: 0, game: null };
   return `<div class="starter-row">
     <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
     <span class="starter-name">${escapeHtml(p.name)}</span>
-    <span class="starter-game${p.game && p.game.state === 'in' ? ' live' : ''}">${gameLabel(p.game)}</span>
-    <span class="starter-points">${(p.points ?? 0).toFixed(1)}</span>
+    <span class="starter-game${c.game && c.game.state === 'in' ? ' live' : ''}">${gameLabel(c.game)}</span>
+    <span class="starter-points">${c.points.toFixed(1)}</span>
   </div>`;
 }
 
-function matchupKey(m){ return m.home.franchiseId + '-' + m.away.franchiseId; }
+function teamScore(team, computedByPlayerId){
+  return team.starters.reduce((sum, p) => sum + ((computedByPlayerId[p.id] && computedByPlayerId[p.id].points) || 0), 0);
+}
 
-function renderMatchup(m){
-  const key = matchupKey(m);
-  const homeLead = m.home.score > m.away.score;
-  const awayLead = m.away.score > m.home.score;
-  const isOpen = openMatchups.has(key);
-  return `<div class="matchup-card">
-    <div class="matchup-score-row" onclick="toggleMatchup('${key}')">
+function renderMatchup(m, computedByPlayerId){
+  const homeScore = teamScore(m.home, computedByPlayerId);
+  const awayScore = teamScore(m.away, computedByPlayerId);
+  const homeLead = homeScore > awayScore;
+  const awayLead = awayScore > homeScore;
+  return `<div class="matchup-slide"><div class="matchup-card">
+    <div class="matchup-score-row">
       <div class="matchup-team home${homeLead ? ' leading' : ''}">
         <span class="name">${escapeHtml(m.home.team)}</span>
-        <span class="score">${m.home.score.toFixed(1)}</span>
+        <span class="score">${homeScore.toFixed(1)}</span>
       </div>
       <span class="matchup-vs">VS</span>
       <div class="matchup-team away${awayLead ? ' leading' : ''}">
         <span class="name">${escapeHtml(m.away.team)}</span>
-        <span class="score">${m.away.score.toFixed(1)}</span>
+        <span class="score">${awayScore.toFixed(1)}</span>
       </div>
-      <div class="matchup-toggle">${isOpen ? '&minus; hide starters' : '&plus; show starters'}</div>
     </div>
-    <div class="starters${isOpen ? ' open' : ''}" id="starters-${key}">
-      <div class="side">${m.home.starters.map(starterRow).join('') || '<div class="starter-row">No starters yet</div>'}</div>
-      <div class="side">${m.away.starters.map(starterRow).join('') || '<div class="starter-row">No starters yet</div>'}</div>
+    <div class="starters">
+      <div class="side">${m.home.starters.map((p) => starterRow(p, computedByPlayerId[p.id])).join('') || '<div class="starter-row">No starters yet</div>'}</div>
+      <div class="side">${m.away.starters.map((p) => starterRow(p, computedByPlayerId[p.id])).join('') || '<div class="starter-row">No starters yet</div>'}</div>
     </div>
+  </div></div>`;
+}
+
+function renderWeekNav(data){
+  const nav = document.getElementById('weekNav');
+  if(!data.totalWeeks){ nav.innerHTML = ''; return; }
+  const options = Array.from({length: data.totalWeeks}, (_, i) => i + 1)
+    .map((w) => `<option value="${w}"${w === data.week ? ' selected' : ''}>Week ${w}</option>`)
+    .join('');
+  nav.innerHTML = `<div class="week-nav">
+    <button id="weekPrev" ${data.week <= 1 ? 'disabled' : ''}>&lsaquo;</button>
+    <select id="weekSelect">${options}</select>
+    <button id="weekNext" ${data.week >= data.totalWeeks ? 'disabled' : ''}>&rsaquo;</button>
   </div>`;
+  document.getElementById('weekPrev').onclick = () => loadWeek(data.week - 1);
+  document.getElementById('weekNext').onclick = () => loadWeek(data.week + 1);
+  document.getElementById('weekSelect').onchange = (e) => loadWeek(Number(e.target.value));
 }
 
-function toggleMatchup(key){
-  if(openMatchups.has(key)) openMatchups.delete(key);
-  else openMatchups.add(key);
-  const el = document.getElementById('starters-' + key);
-  if(el){
-    el.classList.toggle('open');
-    const toggleLabel = el.previousElementSibling.querySelector('.matchup-toggle');
-    if(toggleLabel) toggleLabel.innerHTML = el.classList.contains('open') ? '&minus; hide starters' : '&plus; show starters';
-  }
-}
-
-function render(data, ok){
-  const bannerEl = document.getElementById('banner');
+function renderCarousel(matchups, computedByPlayerId){
   const contentEl = document.getElementById('content');
-
-  if(!ok){
-    bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>Couldn't reach the live scoreboard. Retrying&hellip;</span></div>`;
+  if(!matchups.length){
+    contentEl.innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
     return;
   }
+  const dots = matchups.map((_, i) => `<button class="dotbtn${i === slideIndex ? ' active' : ''}" data-i="${i}"></button>`).join('');
+  contentEl.innerHTML = `<div class="carousel-wrap">
+    <button class="carousel-arrow prev" id="arrowPrev">&lsaquo;</button>
+    <div class="carousel" id="carousel">${matchups.map((m) => renderMatchup(m, computedByPlayerId)).join('')}</div>
+    <button class="carousel-arrow next" id="arrowNext">&rsaquo;</button>
+  </div>
+  ${matchups.length > 1 ? `<div class="carousel-dots">${dots}</div>` : ''}`;
 
+  const carouselEl = document.getElementById('carousel');
+  const slides = carouselEl.querySelectorAll('.matchup-slide');
+  const goTo = (i) => {
+    slideIndex = Math.max(0, Math.min(matchups.length - 1, i));
+    slides[slideIndex].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  };
+  document.getElementById('arrowPrev').onclick = () => goTo(slideIndex - 1);
+  document.getElementById('arrowNext').onclick = () => goTo(slideIndex + 1);
+  document.querySelectorAll('.dotbtn').forEach((btn) => {
+    btn.onclick = () => goTo(Number(btn.dataset.i));
+  });
+  let scrollTimer;
+  carouselEl.onscroll = () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const mid = carouselEl.scrollLeft + carouselEl.clientWidth / 2;
+      let closest = 0, closestDist = Infinity;
+      slides.forEach((s, i) => {
+        const dist = Math.abs((s.offsetLeft + s.clientWidth / 2) - mid);
+        if(dist < closestDist){ closestDist = dist; closest = i; }
+      });
+      if(closest !== slideIndex){
+        slideIndex = closest;
+        document.querySelectorAll('.dotbtn').forEach((b, i) => b.classList.toggle('active', i === slideIndex));
+      }
+    }, 100);
+  };
+  goTo(Math.min(slideIndex, matchups.length - 1));
+}
+
+function renderBanner(data){
+  const bannerEl = document.getElementById('banner');
   if(data.status === 'unavailable' || data.status === 'not_started'){
     bannerEl.innerHTML = `<div class="banner info">${escapeHtml(data.message || "Live scoring isn't available until the season starts.")}</div>`;
   } else {
     const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     bannerEl.innerHTML = `<div class="banner"><span><span class="dot"></span>Live &mdash; Week ${escapeHtml(data.week)}</span><span class="refresh-note">Updated ${now}</span></div>`;
   }
+}
 
-  if(!data.matchups || !data.matchups.length){
-    contentEl.innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
-    return;
+/* ---------- Orchestration ---------- */
+async function loadEspnAndRender(data){
+  const computedByPlayerId = {};
+  const allPlayers = data.matchups.flatMap((m) => [...m.home.starters, ...m.away.starters]);
+
+  try{
+    // Scoreboard is cheap (one call for the whole week) and drives game
+    // clock/redzone, so it's refetched every poll regardless of week.
+    if(espnCache.week !== data.week) espnCache = { week: data.week, gamesByTeam: {}, boxByEvent: {} };
+    espnCache.gamesByTeam = await loadEspnScoreboard(data.week, data.season);
+
+    const neededEventIds = new Set();
+    for(const p of allPlayers){
+      const abbr = p.nflTeam ? (MFL_TO_ESPN_TEAM[p.nflTeam] || p.nflTeam) : null;
+      const game = abbr ? espnCache.gamesByTeam[abbr] : null;
+      if(game && game.eventId) neededEventIds.add(game.eventId);
+    }
+
+    // Box scores are heavier, so only (re)fetch a game that's still live —
+    // final/pregame games don't need re-pulling every poll.
+    await Promise.all([...neededEventIds].map(async (eventId) => {
+      const existing = espnCache.boxByEvent[eventId];
+      if(existing && existing.final) return;
+      try{
+        const summary = await espnJson(`${ESPN_SUMMARY}?event=${eventId}`);
+        const final = !!(summary.header?.competitions?.[0]?.status?.type?.completed);
+        espnCache.boxByEvent[eventId] = {
+          summary,
+          final,
+          playerIndex: buildPlayerIndex(summary),
+          fieldGoals: extractFieldGoalPlays(summary),
+        };
+      } catch(e){
+        console.error('ESPN box score failed for event', eventId, e);
+      }
+    }));
+  } catch(e){
+    console.error('ESPN scoreboard failed', e);
   }
-  contentEl.innerHTML = `<div class="matchup-grid">${data.matchups.map(renderMatchup).join('')}</div>`;
+
+  for(const p of allPlayers){
+    computedByPlayerId[p.id] = computePoints(p, espnCache.gamesByTeam, data.rules);
+  }
+
+  renderCarousel(data.matchups, computedByPlayerId);
+}
+
+async function loadWeek(week){
+  slideIndex = 0;
+  const bannerEl = document.getElementById('banner');
+  const loadingLabel = week ? `Loading week ${escapeHtml(week)}` : 'Loading';
+  bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>${loadingLabel}&hellip;</span></div>`;
+  try{
+    const res = await fetch(`${LIVE_API_URL}?week=${week}`);
+    const data = await res.json();
+    currentData = data;
+    currentWeek = data.week;
+    renderBanner(data);
+    renderWeekNav(data);
+    if(data.matchups && data.matchups.length){
+      await loadEspnAndRender(data);
+    } else {
+      document.getElementById('content').innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
+    }
+  } catch(e){
+    bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>Couldn't reach the live scoreboard. Retrying&hellip;</span></div>`;
+  }
 }
 
 async function poll(){
-  try{
-    const res = await fetch(LIVE_API_URL);
-    const data = await res.json();
-    render(data, true);
-  } catch(e){
-    render(null, false);
-  }
+  if(currentWeek == null){ await loadWeek(''); return; } // '' lets the API pick the current week
+  await loadWeek(currentWeek);
 }
 
 poll();
