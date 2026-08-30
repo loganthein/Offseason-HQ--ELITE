@@ -254,8 +254,19 @@ async function handleChat(request, env) {
 async function verifySlackSignature(request, rawBody, signingSecret) {
   const timestamp = request.headers.get("X-Slack-Request-Timestamp");
   const signature = request.headers.get("X-Slack-Signature");
-  if (!timestamp || !signature) return false;
-  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 60 * 5) return false; // replay guard
+  if (!timestamp || !signature) {
+    console.error("Slack signature check: missing timestamp or signature header", { timestamp, signature });
+    return false;
+  }
+  const skew = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (skew > 60 * 5) {
+    console.error("Slack signature check: timestamp too old/skewed", { skew, timestamp });
+    return false;
+  }
+  if (!signingSecret) {
+    console.error("Slack signature check: SLACK_SIGNING_SECRET is not set on this Worker");
+    return false;
+  }
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -267,10 +278,19 @@ async function verifySlackSignature(request, rawBody, signingSecret) {
   const sigBytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`v0:${timestamp}:${rawBody}`));
   const computed = "v0=" + [...new Uint8Array(sigBytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
-  if (computed.length !== signature.length) return false;
-  let diff = 0;
-  for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
-  return diff === 0;
+  if (computed !== signature) {
+    // Signatures (and the secret's length) aren't sensitive to log — they're
+    // already public over the wire and reveal nothing about the secret
+    // itself beyond what a MAC inherently does.
+    console.error("Slack signature check: mismatch", {
+      computed,
+      received: signature,
+      secretLength: signingSecret.length,
+      bodyLength: rawBody.length,
+    });
+    return false;
+  }
+  return true;
 }
 
 async function postToSlack(env, { channel, thread_ts, text }) {
