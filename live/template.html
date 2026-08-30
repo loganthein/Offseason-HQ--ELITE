@@ -308,8 +308,20 @@ h1{
   gap:10px;
   border-bottom:1px solid var(--border-soft);
 }
-.matchup-team{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.matchup-team{ display:flex; flex-direction:column; gap:6px; min-width:0; }
 .matchup-team.away{ align-items:flex-end; text-align:right; }
+.team-id{ display:flex; align-items:center; gap:8px; min-width:0; }
+.matchup-team.away .team-id{ flex-direction:row-reverse; }
+.team-avatar{
+  width:32px; height:32px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:13px;
+  color:#fff;
+  letter-spacing:0.5px;
+}
 .matchup-team .name{
   font-size:13.5px;
   font-weight:600;
@@ -329,18 +341,55 @@ h1{
 .matchup-team.leading .score{ color:var(--good); }
 .matchup-vs{ font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:1px; }
 
-.starters{ display:grid; grid-template-columns:1fr 1fr; padding:8px 0; }
-.starters .side{ padding:6px 12px; }
-.starters .side + .side{ border-left:1px solid var(--border-soft); }
+/* Starter rows: one row per roster slot, home player/score on the left,
+   position pill in the middle, away score/player on the right — mirrors
+   both teams' lineups side by side instead of two separate stacked lists. */
+.starters-table{ padding:4px 0; }
 .starter-row{
-  display:flex;
+  display:grid;
+  grid-template-columns:1fr auto auto auto 1fr;
   align-items:center;
-  gap:8px;
-  padding:6px 4px;
+  gap:6px;
+  padding:9px 12px;
   border-bottom:1px solid var(--border-soft);
-  font-size:12.5px;
 }
 .starter-row:last-child{ border-bottom:none; }
+.p-block{ min-width:0; }
+.p-block.home{ text-align:right; }
+.p-block.away{ text-align:left; }
+.p-top{ display:flex; align-items:baseline; gap:5px; }
+.p-block.home .p-top{ justify-content:flex-end; }
+.p-block.away .p-top{ justify-content:flex-start; }
+.p-name{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--ink);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:130px;
+}
+.p-team{ font-family:'DM Mono',monospace; font-size:9.5px; color:var(--ink-faint); flex-shrink:0; }
+.p-sub{ display:flex; flex-direction:column; gap:1px; margin-top:2px; }
+.p-block.home .p-sub{ align-items:flex-end; }
+.p-block.away .p-sub{ align-items:flex-start; }
+.p-sub span{
+  font-family:'DM Mono',monospace;
+  font-size:9.5px;
+  color:var(--ink-faint);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:170px;
+}
+.p-sub .live{ color:var(--red-ink); font-weight:600; }
+.p-score{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:19px;
+  color:var(--ink);
+  min-width:36px;
+  text-align:center;
+}
 .pos-tag{
   font-family:'DM Mono',monospace;
   font-size:9.5px;
@@ -357,17 +406,16 @@ h1{
 .pos-tag.pos-WR{ background:color-mix(in srgb, var(--pos-wr) 16%, transparent); color:var(--pos-wr); }
 .pos-tag.pos-TE{ background:color-mix(in srgb, var(--pos-te) 16%, transparent); color:var(--pos-te); }
 .pos-tag.pos-D{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
-.starter-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
-.starter-game{ font-family:'DM Mono',monospace; font-size:10px; color:var(--ink-faint); white-space:nowrap; }
-.starter-game.live{ color:var(--red-ink); }
-.starter-game .rz{ color:var(--red); font-weight:600; }
-.starter-points{ font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--ink); min-width:38px; text-align:right; }
+.pos-tag.pos-PK{ background:color-mix(in srgb, var(--ink-dim) 16%, transparent); color:var(--ink-dim); }
 
 @media (max-width: 480px){
-  .starters{ grid-template-columns:1fr; }
-  .starters .side + .side{ border-left:none; border-top:1px solid var(--border-soft); }
   h1{ font-size:26px; }
   .matchup-team .score{ font-size:28px; }
+  .p-name{ max-width:76px; font-size:11.5px; }
+  .p-sub span{ max-width:88px; }
+  .p-score{ font-size:16px; min-width:26px; }
+  .pos-tag{ min-width:22px; font-size:8.5px; padding:2px 4px; }
+  .starter-row{ padding:8px 6px; gap:4px; }
 }
 </style>
 </head>
@@ -405,6 +453,82 @@ const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/football/nfl
 // MFL still uses some legacy NFL abbreviations that differ from ESPN's.
 const MFL_TO_ESPN_TEAM = { ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH" };
 const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" };
+
+/* ---------- Demo mode ----------
+   Visit this page with ?demo=1 to render fixed, fake data instead of
+   calling the Worker/ESPN at all — for iterating on layout/visuals without
+   needing live games. Real team names, fake stat lines. */
+let demoIdSeq = 0;
+function demoPlayer(name, pos, nflTeam, points, contextText, live, statLine){
+  demoIdSeq += 1;
+  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '' };
+}
+const DEMO_MATCHUPS = [
+  {
+    home: { franchiseId: 'd1', team: 'The SHIELD', starters: [
+      demoPlayer('Daniel Jones', 'QB', 'IND', 18.2, 'Final · IND 27-20', false, '255 YD, 2 TD, 1 INT'),
+      demoPlayer('Kenneth Walker III', 'RB', 'SEA', 14.6, 'Q3 8:42', true, '88 YD, 1 TD, 3 REC'),
+      demoPlayer('Javonte Williams', 'RB', 'DAL', 9.3, '● Q3 8:42', true, '61 YD, 4 REC, 22 YD'),
+      demoPlayer('Amon-Ra St. Brown', 'WR', 'DET', 22.7, 'Final · DET 31-24', false, '11 REC, 142 YD, 1 TD'),
+      demoPlayer('Christian Watson', 'WR', 'GB', 6.1, 'Q2 2:15', true, '3 REC, 41 YD'),
+      demoPlayer('Tyler Warren', 'TE', 'IND', 5.4, 'Final · IND 27-20', false, '4 REC, 34 YD'),
+      demoPlayer('Darnell Mooney', 'WR', 'ATL', 0, 'Pregame', false, ''),
+      demoPlayer('Chris Boswell', 'PK', 'PIT', 8.0, 'Final · PIT 20-16', false, '2 FG, 2 XP'),
+      demoPlayer('Green Bay Packers', 'D', 'GB', 12.0, 'Q2 2:15', true, '3 SACK, 1 INT, 14 PA'),
+    ] },
+    away: { franchiseId: 'd2', team: 'Seal Team Nix', starters: [
+      demoPlayer('Bo Nix', 'QB', 'DEN', 24.5, 'Final · DEN 31-13', false, '301 YD, 4 TD'),
+      demoPlayer('Kyren Williams', 'RB', 'LAR', 16.8, '● Q3 8:42', true, '102 YD, 1 TD, 4 REC'),
+      demoPlayer('David Montgomery', 'RB', 'DET', 13.2, 'Final · DET 31-24', false, '79 YD, 1 TD, 2 REC'),
+      demoPlayer('Stefon Diggs', 'WR', 'NE', 9.5, 'Q2 2:15', true, '6 REC, 65 YD'),
+      demoPlayer('DK Metcalf', 'WR', 'PIT', 4.0, 'Final · PIT 20-16', false, '2 REC, 30 YD'),
+      demoPlayer('Michael Mayer', 'TE', 'LV', 3.2, 'Pregame', false, ''),
+      demoPlayer('Chris Olave', 'WR', 'NO', 7.7, 'Q1 5:03', true, '4 REC, 47 YD'),
+      demoPlayer('Cameron Dicker', 'PK', 'LAC', 6.0, 'Final · LAC 23-17', false, '1 FG, 3 XP'),
+      demoPlayer('Denver Broncos', 'D', 'DEN', 15.0, 'Final · DEN 31-13', false, '4 SACK, 2 INT, 13 PA'),
+    ] },
+  },
+  {
+    home: { franchiseId: 'd3', team: 'Crusty Baguettes', starters: [
+      demoPlayer('Kirk Cousins', 'QB', 'ATL', 12.1, 'Final · ATL 20-27', false, '198 YD, 1 TD, 1 INT'),
+      demoPlayer('Chuba Hubbard', 'RB', 'CAR', 8.4, 'Q4 1:12', true, '52 YD, 1 TD'),
+      demoPlayer('Tyrone Tracy', 'RB', 'NYG', 5.0, 'Pregame', false, ''),
+      demoPlayer('Rashod Bateman', 'WR', 'BAL', 10.2, 'Final · BAL 27-24', false, '5 REC, 71 YD'),
+      demoPlayer('Jauan Jennings', 'WR', 'SF', 6.6, 'Q4 1:12', true, '3 REC, 38 YD'),
+      demoPlayer('Mark Andrews', 'TE', 'BAL', 7.9, 'Final · BAL 27-24', false, '5 REC, 49 YD'),
+      demoPlayer('Nick Chubb', 'RB', 'HOU', 3.3, 'Pregame', false, ''),
+      demoPlayer('Cairo Santos', 'PK', 'CHI', 5.0, 'Final · CHI 16-13', false, '1 FG, 2 XP'),
+      demoPlayer('Kansas City Chiefs', 'D', 'KC', 4.0, 'Q4 1:12', true, '1 SACK, 21 PA'),
+    ] },
+    away: { franchiseId: 'd4', team: 'Minnesota Muskies', starters: [
+      demoPlayer('Tua Tagovailoa', 'QB', 'MIA', 19.9, 'Final · MIA 28-21', false, '267 YD, 3 TD'),
+      demoPlayer('Chase Brown', 'RB', 'CIN', 11.5, 'Q4 1:12', true, '68 YD, 1 TD'),
+      demoPlayer('Jaylen Warren', 'RB', 'PIT', 9.8, 'Final · PIT 20-16', false, '58 YD, 3 REC'),
+      demoPlayer('Terry McLaurin', 'WR', 'WAS', 14.3, '● Q3 9:50', true, '7 REC, 98 YD'),
+      demoPlayer('Marvin Harrison Jr.', 'WR', 'ARI', 8.1, 'Pregame', false, ''),
+      demoPlayer('Sam LaPorta', 'TE', 'DET', 6.5, 'Final · DET 31-24', false, '4 REC, 45 YD'),
+      demoPlayer('DeVonta Smith', 'WR', 'PHI', 10.0, 'Q3 9:50', true, '5 REC, 63 YD'),
+      demoPlayer('Harrison Butker', 'PK', 'KC', 9.0, 'Q4 1:12', true, '3 FG, 0 XP'),
+      demoPlayer('Pittsburgh Steelers', 'D', 'PIT', 6.0, 'Final · PIT 20-16', false, '2 SACK, 1 INT, 16 PA'),
+    ] },
+  },
+];
+
+function renderDemo(){
+  const computedByPlayerId = {};
+  for(const m of DEMO_MATCHUPS){
+    for(const p of [...m.home.starters, ...m.away.starters]){
+      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine };
+    }
+  }
+  document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
+  document.getElementById('weekNav').innerHTML = `<div class="week-nav">
+    <button disabled>&lsaquo;</button>
+    <select disabled><option>Week 1 (demo)</option></select>
+    <button disabled>&rsaquo;</button>
+  </div>`;
+  renderCarousel(DEMO_MATCHUPS, computedByPlayerId);
+}
 
 /* ---------- Theme (matches the rest of the site) ---------- */
 const THEMES = ['auto','light','dark'];
@@ -641,13 +765,50 @@ function defenseStats(summary, teamAbbr, teamId, oppScore){
   return stats;
 }
 
+// Turns the raw {EVENT_CODE: count} stat object into a short human-readable
+// line, e.g. "257 YD, 3 TD, 1 INT" or "3 SACK, 1 INT, 24 PA". Offense and
+// defense codes never overlap on one player, so one formatter covers both.
+function formatStatSummary(stats){
+  if(!stats) return '';
+  const parts = [];
+  const round = (n) => Math.round(n * 10) / 10;
+  if(stats._FG) parts.push(stats._FG + ' FG');
+  if(stats.PY) parts.push(round(stats.PY) + ' YD');
+  if(stats['#P']) parts.push(stats['#P'] + ' TD');
+  if(stats.IN) parts.push(stats.IN + ' INT');
+  if(stats.RY) parts.push(round(stats.RY) + ' YD');
+  if(stats['#R']) parts.push(stats['#R'] + ' TD');
+  if(stats.CC) parts.push(stats.CC + ' REC');
+  if(stats.CY) parts.push(round(stats.CY) + ' YD');
+  if(stats['#C']) parts.push(stats['#C'] + ' TD');
+  if(stats.FL) parts.push(stats.FL + ' FUM');
+  if(stats.EP) parts.push(stats.EP + ' XP');
+  if(stats.SK) parts.push(stats.SK + ' SACK');
+  if(stats.IC) parts.push(stats.IC + ' INT');
+  if(stats.TPA != null) parts.push(stats.TPA + ' PA');
+  return parts.join(', ');
+}
+
+// The small gray line under a player's name: live clock, final score, or
+// pregame — same shape whether it's a real ESPN game object or demo data.
+function gameContextText(game){
+  if(!game) return '';
+  if(game.final) return `Final · ${game.teamScore}-${game.oppScore}`;
+  if(game.state === 'pre') return 'Pregame';
+  if(game.state === 'in'){
+    const rz = game.redZone ? '● ' : '';
+    return rz + 'Q' + (game.quarter ?? '?') + ' ' + (game.clock ?? '');
+  }
+  return '';
+}
+
 /* ---------- Per-player point computation ---------- */
 function computePoints(player, gamesByTeam, rules){
   const espnAbbr = player.nflTeam ? (MFL_TO_ESPN_TEAM[player.nflTeam] || player.nflTeam) : null;
   const game = espnAbbr ? gamesByTeam[espnAbbr] : null;
   const ruleKey = POS_TO_RULE_KEY[player.pos] || player.pos;
   const eventRules = rules && rules[ruleKey];
-  const result = { points: 0, game: game || null };
+  const result = { points: 0, game: game || null, contextText: gameContextText(game), contextLive: !!(game && game.state === 'in'), statLine: '' };
   if(!game || !game.eventId || !eventRules) return result;
 
   const box = espnCache.boxByEvent[game.eventId];
@@ -656,6 +817,7 @@ function computePoints(player, gamesByTeam, rules){
   if(player.pos === 'D'){
     const stats = defenseStats(box.summary, espnAbbr, game.teamId, game.oppScore);
     result.points = scoreStatLine(stats, [], eventRules);
+    result.statLine = formatStatSummary(stats);
     return result;
   }
 
@@ -663,14 +825,16 @@ function computePoints(player, gamesByTeam, rules){
   if(!rec) return result; // inactive, bye, or a name we couldn't match
 
   const stats = offenseStats(rec.categories);
+  const fgDistances = [];
   if(player.pos === 'PK'){
     const xp = Number(labelValue(rec.categories, 'kicking', 'XP')?.split('/')[0]) || 0;
     if(xp) stats.EP = xp;
+    const kicks = box.fieldGoals.filter((k) => lastNameOf(normalizeName(k.rawName)) === lastNameOf(normalizeName(player.name)));
+    fgDistances.push(...kicks.map((k) => k.distance));
+    if(fgDistances.length) stats._FG = fgDistances.length; // display-only, not a scoring event
   }
-  const fgDistances = player.pos === 'PK'
-    ? box.fieldGoals.filter((k) => lastNameOf(normalizeName(k.rawName)) === lastNameOf(normalizeName(player.name))).map((k) => k.distance)
-    : [];
   result.points = scoreStatLine(stats, fgDistances, eventRules);
+  result.statLine = formatStatSummary(stats);
   return result;
 }
 
@@ -680,25 +844,40 @@ let currentWeek = null;
 let slideIndex = 0;
 
 /* ---------- Rendering ---------- */
-function gameLabel(game){
-  if(!game) return '';
-  if(game.final) return 'Final';
-  if(game.state === 'pre') return 'Upcoming';
-  if(game.state === 'in'){
-    const rz = game.redZone ? '<span class="rz">&#9679;</span> ' : '';
-    return rz + 'Q' + (game.quarter ?? '?') + ' ' + (game.clock ?? '');
-  }
-  return '';
+function initials(name){
+  const words = String(name || '').split(/\s+/).filter(Boolean);
+  return (words.map((w) => w[0]).join('').slice(0, 2) || '?').toUpperCase();
+}
+function avatarColor(name){
+  let hash = 0;
+  for(let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360} 50% 42%)`;
 }
 
-function starterRow(p, computed){
-  const pos = p.pos || '';
-  const c = computed || { points: 0, game: null };
+function playerBlock(p, computed, side){
+  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '' };
+  const nameEl = `<span class="p-name">${escapeHtml(p.name)}</span>`;
+  const teamEl = `<span class="p-team">${escapeHtml(p.nflTeam || '')}</span>`;
+  const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
+  return `<div class="p-block ${side}">
+    <div class="p-top">${top}</div>
+    <div class="p-sub">
+      ${c.contextText ? `<span${c.contextLive ? ' class="live"' : ''}>${escapeHtml(c.contextText)}</span>` : ''}
+      ${c.statLine ? `<span>${escapeHtml(c.statLine)}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function starterRow(homePlayer, awayPlayer, computedByPlayerId){
+  const pos = (homePlayer || awayPlayer).pos || '';
+  const hc = homePlayer ? computedByPlayerId[homePlayer.id] : null;
+  const ac = awayPlayer ? computedByPlayerId[awayPlayer.id] : null;
   return `<div class="starter-row">
+    ${homePlayer ? playerBlock(homePlayer, hc, 'home') : '<div class="p-block home"></div>'}
+    <span class="p-score">${homePlayer ? (hc?.points || 0).toFixed(1) : '—'}</span>
     <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
-    <span class="starter-name">${escapeHtml(p.name)}</span>
-    <span class="starter-game${c.game && c.game.state === 'in' ? ' live' : ''}">${gameLabel(c.game)}</span>
-    <span class="starter-points">${c.points.toFixed(1)}</span>
+    <span class="p-score">${awayPlayer ? (ac?.points || 0).toFixed(1) : '—'}</span>
+    ${awayPlayer ? playerBlock(awayPlayer, ac, 'away') : '<div class="p-block away"></div>'}
   </div>`;
 }
 
@@ -711,22 +890,27 @@ function renderMatchup(m, computedByPlayerId){
   const awayScore = teamScore(m.away, computedByPlayerId);
   const homeLead = homeScore > awayScore;
   const awayLead = awayScore > homeScore;
+  const rowCount = Math.max(m.home.starters.length, m.away.starters.length);
+  const rows = Array.from({ length: rowCount }, (_, i) => starterRow(m.home.starters[i], m.away.starters[i], computedByPlayerId)).join('');
   return `<div class="matchup-slide"><div class="matchup-card">
     <div class="matchup-score-row">
       <div class="matchup-team home${homeLead ? ' leading' : ''}">
-        <span class="name">${escapeHtml(m.home.team)}</span>
+        <div class="team-id">
+          <span class="team-avatar" style="background:${avatarColor(m.home.team)}">${escapeHtml(initials(m.home.team))}</span>
+          <span class="name">${escapeHtml(m.home.team)}</span>
+        </div>
         <span class="score">${homeScore.toFixed(1)}</span>
       </div>
       <span class="matchup-vs">VS</span>
       <div class="matchup-team away${awayLead ? ' leading' : ''}">
-        <span class="name">${escapeHtml(m.away.team)}</span>
+        <div class="team-id">
+          <span class="team-avatar" style="background:${avatarColor(m.away.team)}">${escapeHtml(initials(m.away.team))}</span>
+          <span class="name">${escapeHtml(m.away.team)}</span>
+        </div>
         <span class="score">${awayScore.toFixed(1)}</span>
       </div>
     </div>
-    <div class="starters">
-      <div class="side">${m.home.starters.map((p) => starterRow(p, computedByPlayerId[p.id])).join('') || '<div class="starter-row">No starters yet</div>'}</div>
-      <div class="side">${m.away.starters.map((p) => starterRow(p, computedByPlayerId[p.id])).join('') || '<div class="starter-row">No starters yet</div>'}</div>
-    </div>
+    <div class="starters-table">${rows || '<div class="starter-row">No starters yet</div>'}</div>
   </div></div>`;
 }
 
@@ -874,8 +1058,12 @@ async function poll(){
   await loadWeek(currentWeek);
 }
 
-poll();
-setInterval(poll, POLL_MS);
+if(new URLSearchParams(location.search).get('demo') === '1'){
+  renderDemo();
+} else {
+  poll();
+  setInterval(poll, POLL_MS);
+}
 </script>
 </body>
 </html>
