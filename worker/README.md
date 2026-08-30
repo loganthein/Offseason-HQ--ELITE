@@ -131,3 +131,65 @@ schema (`franchises`, `franchise_names`, `games`, `draft_picks`,
 question rather than the Worker hand-coding a query for every possible
 question — this is what makes "biggest blowout ever" and "who won week 5 of
 2017" both work through the same simple loop.
+
+## Slack (@DERIK in the league's workspace)
+
+Same Worker, same Claude/DB logic — `/slack/events` is just a second front
+door that answers by posting back to Slack instead of streaming to a
+browser. Set it up once:
+
+### 1. Create the Slack app
+
+Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App**
+→ **From an app manifest** → pick your workspace → paste this (YAML), name
+included:
+
+```yaml
+display_information:
+  name: DERIK
+  description: The #ELITE Fantasy Football league historian
+features:
+  bot_user:
+    display_name: DERIK
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+settings:
+  socket_mode_enabled: false
+```
+
+Deliberately leaves Event Subscriptions off for now — Slack verifies the
+Request URL the moment you turn it on, and the Worker needs to already be
+deployed with the right secrets for that to succeed. Create the app, then:
+
+- **Basic Information** → App Credentials → copy **Signing Secret**.
+- **OAuth & Permissions** → **Install to Workspace** → copy the **Bot User
+  OAuth Token** (`xoxb-...`).
+
+### 2. Set the secrets and deploy
+
+```bash
+wrangler secret put SLACK_SIGNING_SECRET
+wrangler secret put SLACK_BOT_TOKEN
+wrangler deploy
+```
+
+### 3. Turn on Event Subscriptions
+
+Back in the Slack app config → **Event Subscriptions** → toggle on → Request
+URL: `https://<your-worker>.workers.dev/slack/events` (should show
+"Verified" — that's the Worker answering Slack's `url_verification`
+challenge). Under **Subscribe to bot events**, add `app_mention` → **Save
+Changes** → reinstall the app if it asks.
+
+### 4. Use it
+
+`/invite @DERIK` in whatever channel(s) the league wants it in, then
+`@DERIK who won week 5 of 2017` — it replies in-thread. Each mention is
+answered as a standalone question (no memory of the rest of the thread).
+Slack's own markdown ("mrkdwn") differs from the web chat's, and Slack can't
+render tables at all, so the system prompt gets a Slack-specific formatting
+note (`SLACK_FORMATTING_NOTE` in `src/index.js`) added only for this path.

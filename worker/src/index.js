@@ -89,6 +89,12 @@ Only SELECT statements are allowed. Write plain, direct answers — this is a ca
 
 You also have a web search tool for anything outside this league's own history — current NFL news, injury reports, this week's real games and scores, live rankings, general football knowledge. Use the database for anything about this league specifically (its games, drafts, trades, owners); use web search for real-world/current football context; combine both when a question spans both (e.g. "how does our keeper league's Bijan Robinson value compare to how he's playing right now").`;
 
+// Appended to SYSTEM_PROMPT for Slack replies, where standard markdown
+// doesn't render — Slack has its own "mrkdwn" syntax and no table support.
+const SLACK_FORMATTING_NOTE = `
+
+You're replying in Slack for this message, not the web chat. Use Slack's mrkdwn instead of standard markdown: *bold* with single asterisks (never **double**), no headers (#), and no tables — if the data is tabular, use a short bulleted list instead since Slack can't render tables. Keep it concise, channel-appropriate length.`;
+
 const TOOLS = [
   {
     name: "query_league_database",
@@ -136,7 +142,7 @@ function assertSelectOnly(sql) {
   return /\blimit\b/i.test(trimmed) ? trimmed : `${trimmed} LIMIT 200`;
 }
 
-async function callClaude(env, messages, { stream, tools = TOOLS }) {
+async function callClaude(env, messages, { stream, tools = TOOLS, system = SYSTEM_PROMPT }) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -147,7 +153,7 @@ async function callClaude(env, messages, { stream, tools = TOOLS }) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system,
       tools,
       messages,
       stream,
@@ -162,16 +168,16 @@ async function callClaude(env, messages, { stream, tools = TOOLS }) {
     // than taking down every question, including plain DB lookups.
     if (tools === TOOLS) {
       console.error("Retrying without web_search tool");
-      return callClaude(env, messages, { stream, tools: TOOLS.filter((t) => t.name !== "web_search") });
+      return callClaude(env, messages, { stream, system, tools: TOOLS.filter((t) => t.name !== "web_search") });
     }
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 500)}`);
   }
   return res;
 }
 
-async function runToolLoop(env, messages) {
+async function runToolLoop(env, messages, system = SYSTEM_PROMPT) {
   for (let i = 0; i < MAX_TOOL_ROUNDS; i++) {
-    const res = await callClaude(env, messages, { stream: false });
+    const res = await callClaude(env, messages, { stream: false, system });
     const data = await res.json();
     if (data.stop_reason !== "tool_use") return { messages, finalContent: data.content };
 
@@ -243,8 +249,92 @@ async function handleChat(request, env) {
   });
 }
 
+// --- Slack (@DERIK mentions in the league's Slack) ---
+
+async function verifySlackSignature(request, rawBody, signingSecret) {
+  const timestamp = request.headers.get("X-Slack-Request-Timestamp");
+  const signature = request.headers.get("X-Slack-Signature");
+  if (!timestamp || !signature) return false;
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 60 * 5) return false; // replay guard
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(signingSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sigBytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`v0:${timestamp}:${rawBody}`));
+  const computed = "v0=" + [...new Uint8Array(sigBytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  if (computed.length !== signature.length) return false;
+  let diff = 0;
+  for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
+  return diff === 0;
+}
+
+async function postToSlack(env, { channel, thread_ts, text }) {
+  const res = await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
+    },
+    body: JSON.stringify({ channel, thread_ts, text }),
+  });
+  const data = await res.json();
+  if (!data.ok) console.error("Slack chat.postMessage error:", data.error);
+}
+
+async function handleMention(env, event) {
+  const question = event.text.replace(/<@[^>]+>/g, "").trim();
+  const reply = { channel: event.channel, thread_ts: event.thread_ts || event.ts };
+  if (!question) {
+    await postToSlack(env, { ...reply, text: "Ask me something about the league — history, keepers, current NFL news, all of it." });
+    return;
+  }
+  try {
+    const { finalContent } = await runToolLoop(env, [{ role: "user", content: question }], SYSTEM_PROMPT + SLACK_FORMATTING_NOTE);
+    const text = finalContent
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim();
+    await postToSlack(env, { ...reply, text: text || "I've got nothing on that one — try rephrasing?" });
+  } catch (e) {
+    console.error("Slack mention error:", e.message);
+    await postToSlack(env, { ...reply, text: "Something went wrong talking to the league database. Try again in a moment." });
+  }
+}
+
+async function handleSlackEvents(request, env, ctx) {
+  const rawBody = await request.text();
+  const verified = await verifySlackSignature(request, rawBody, env.SLACK_SIGNING_SECRET);
+  if (!verified) return new Response("Invalid signature", { status: 401 });
+
+  const body = JSON.parse(rawBody);
+
+  if (body.type === "url_verification") {
+    return new Response(body.challenge);
+  }
+
+  if (body.type === "event_callback") {
+    // Slack retries delivery if it doesn't get a fast 200 (or on any hiccup);
+    // don't answer the same mention twice.
+    if (request.headers.get("X-Slack-Retry-Num")) return new Response("");
+
+    const event = body.event;
+    if (event?.type === "app_mention" && !event.bot_id) {
+      ctx.waitUntil(handleMention(env, event));
+    }
+    return new Response("");
+  }
+
+  return new Response("");
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
@@ -260,6 +350,10 @@ export default {
           headers: { "content-type": "application/json", ...corsHeaders(env, request) },
         });
       }
+    }
+
+    if (url.pathname === "/slack/events" && request.method === "POST") {
+      return await handleSlackEvents(request, env, ctx);
     }
 
     return new Response("Not found", { status: 404, headers: corsHeaders(env, request) });
