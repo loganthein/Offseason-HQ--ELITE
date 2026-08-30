@@ -309,14 +309,23 @@ async function handleMention(env, event) {
 
 async function handleSlackEvents(request, env, ctx) {
   const rawBody = await request.text();
-  const verified = await verifySlackSignature(request, rawBody, env.SLACK_SIGNING_SECRET);
-  if (!verified) return new Response("Invalid signature", { status: 401 });
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
 
-  const body = JSON.parse(rawBody);
-
+  // The one-time URL verification handshake has no side effects — it's just
+  // Slack confirming domain ownership before the app can even be configured
+  // — so answer it before requiring a valid signature. Everything with real
+  // side effects (event_callback below) still requires one.
   if (body.type === "url_verification") {
     return new Response(body.challenge);
   }
+
+  const verified = await verifySlackSignature(request, rawBody, env.SLACK_SIGNING_SECRET);
+  if (!verified) return new Response("Invalid signature", { status: 401 });
 
   if (body.type === "event_callback") {
     // Slack retries delivery if it doesn't get a fast 200 (or on any hiccup);
