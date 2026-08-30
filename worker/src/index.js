@@ -443,11 +443,30 @@ async function handleLiveScores(request, env) {
   const franchiseNames = {};
   for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
 
+  // Player lists come from liveScoring (which carries confirmed starter vs
+  // bench), but that export is empty outside an active week — which would
+  // leave every roster blank all preseason. So when it's unavailable we fall
+  // back to TYPE=rosters for the player lists. Rosters carry no
+  // starter/bench designation, so those come back as an unset lineup and
+  // `lineupConfirmed` tells the frontend not to present them as a lineup.
   const liveFranchises = extractLiveFranchises(live);
+  let lineupConfirmed = liveFranchises.length > 0;
   const playersById = {};
-  for (const f of liveFranchises) {
-    const players = f.players?.player;
-    playersById[f.id] = Array.isArray(players) ? players : players ? [players] : [];
+  if (lineupConfirmed) {
+    for (const f of liveFranchises) {
+      const players = f.players?.player;
+      playersById[f.id] = Array.isArray(players) ? players : players ? [players] : [];
+    }
+  } else {
+    const rostersData = await mflFetch("rosters").catch(() => null);
+    const rf = rostersData?.rosters?.franchise;
+    for (const f of Array.isArray(rf) ? rf : rf ? [rf] : []) {
+      const players = f.player;
+      const list = Array.isArray(players) ? players : players ? [players] : [];
+      // Taxi/IR players aren't part of a game-day roster; drop them so the
+      // preseason view matches what you'd actually be setting a lineup from.
+      playersById[f.id] = list.filter((p) => !p.status || p.status === "ROSTER");
+    }
   }
 
   const allPlayerIds = [...new Set(Object.values(playersById).flat().map((p) => p.id))];
@@ -458,9 +477,14 @@ async function handleLiveScores(request, env) {
     // week). Best-effort: if the export errors or comes back in a shape we
     // don't recognize, ship projections:null and the frontend keeps its
     // explicit "projections unavailable" state instead of fake numbers.
+    // Tried with the PLAYERS filter first, then without — the filter is
+    // supported on most MFL exports but unverified on this one, and a
+    // rejected param would otherwise look identical to "no projections".
     const [playersRes, projRes] = await Promise.all([
       mflFetch("players", `&PLAYERS=${allPlayerIds.join(",")}`),
-      mflFetch("projectedScores", `&W=${week}&PLAYERS=${allPlayerIds.join(",")}`).catch(() => null),
+      mflFetch("projectedScores", `&W=${week}&PLAYERS=${allPlayerIds.join(",")}`)
+        .then((r) => (r?.projectedScores ? r : mflFetch("projectedScores", `&W=${week}`)))
+        .catch(() => mflFetch("projectedScores", `&W=${week}`).catch(() => null)),
     ]);
     for (const p of playersRes.players?.player || []) {
       playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, nflTeam: p.team || null };
@@ -483,13 +507,17 @@ async function handleLiveScores(request, env) {
         nflTeam: info.nflTeam || null,
       };
     };
+    const all = playersById[franchiseId] || [];
+    const name = franchiseNames[franchiseId] || `Franchise ${franchiseId}`;
+    // Without liveScoring there's no starter designation to be had, so the
+    // whole roster goes to bench rather than inventing a lineup nobody set.
+    if (!lineupConfirmed) return { franchiseId, team: name, starters: [], bench: all.map(toEntry) };
     // MFL's liveScoring players carry status "starter"/"nonstarter". Only an
     // explicit "nonstarter" goes to the bench: an absent/unknown status stays
     // in the lineup, so a surprise shape can't blank the whole board.
-    const all = playersById[franchiseId] || [];
     const starters = all.filter((p) => p.status !== "nonstarter").map(toEntry);
     const bench = all.filter((p) => p.status === "nonstarter").map(toEntry);
-    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, starters, bench };
+    return { franchiseId, team: name, starters, bench };
   }
 
   const matchups = extractMatchupsForWeek(fullSchedule, week)
@@ -504,7 +532,7 @@ async function handleLiveScores(request, env) {
 
   const body = debug
     ? { week, totalWeeks, liveUnavailable, rules, raw: { league, rulesData, fullSchedule, live } }
-    : { status: liveUnavailable ? "not_started" : "live", week: Number(week), totalWeeks, season: MFL_SEASON, rules, matchups, projections };
+    : { status: liveUnavailable ? "not_started" : "live", week: Number(week), totalWeeks, season: MFL_SEASON, rules, matchups, projections, lineupConfirmed };
 
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },

@@ -992,12 +992,38 @@ function offenseStats(categories){
   return stats;
 }
 
-// Defense (Def/DST slot): points-allowed, sacks and interceptions come
-// straight out of ESPN's structured box score, so those are exact. Forced
-// fumbles, blocked kicks, safeties and D/ST touchdowns aren't exposed as
-// clean per-team fields in this box score — rather than guess at them from
-// play-by-play text and risk being wrong, they're left at 0 for now. Known
-// gap, flagged rather than silently approximated.
+// Defensive and special-teams scores (SF/#T/BLF/BLP/BLE) aren't per-team
+// fields in ESPN's box score, so they're counted off the scoring-play list
+// instead — the same feed the league ticker uses. Each play is attributed to
+// the team credited with the score, and only return/defensive scores count:
+// an offensive TD is matched by its "pass from"/"run" phrasing and skipped.
+// Blocked kicks only surface here when the block itself produced the score;
+// a block recovered without a score isn't in this feed and stays uncounted.
+function defenseSpecialStats(summary, teamId){
+  const out = {};
+  for(const play of summary.scoringPlays || []){
+    if(!play.team || String(play.team.id) !== String(teamId)) continue;
+    const text = ((play.type && play.type.text) || '') + ' ' + (play.text || '');
+    if(/safety/i.test(text)){ out.SF = (out.SF || 0) + 1; continue; }
+    const isTd = /touchdown|\bTD\b/i.test(text) || (play.scoringType && play.scoringType.name === 'touchdown');
+    if(!isTd) continue;
+    if(/\bpass from\b|\bpass to\b/i.test(text)) continue;   // offensive passing TD
+    if(/\b\d+\s*(yd|yard)s?\s+run\b/i.test(text)) continue; // offensive rushing TD
+    if(/interception return|fumble return|blocked|kickoff return|punt return|return touchdown|recovery in the end zone/i.test(text)){
+      out['#T'] = (out['#T'] || 0) + 1;
+      if(/blocked field goal/i.test(text)) out.BLF = (out.BLF || 0) + 1;
+      else if(/blocked punt/i.test(text)) out.BLP = (out.BLP || 0) + 1;
+      else if(/blocked extra point|blocked pat/i.test(text)) out.BLE = (out.BLE || 0) + 1;
+    }
+  }
+  return out;
+}
+
+// Defense (Def/DST slot). Points-allowed, sacks and interceptions come
+// straight out of ESPN's structured box score, so those are exact. Fumble
+// recoveries are derived from the opposing team's "fumbles LOST" — a fumble
+// the offense loses is by definition one this defense recovered — which is a
+// cleaner read than trying to attribute recoveries player by player.
 function defenseStats(summary, teamAbbr, teamId, oppScore){
   const stats = {};
   const teamEntries = (summary.boxscore && summary.boxscore.players) || [];
@@ -1020,6 +1046,25 @@ function defenseStats(summary, teamAbbr, teamId, oppScore){
   if(sacks) stats.SK = sacks;
   const picks = sumLabel('interceptions', 'INT');
   if(picks) stats.IC = picks;
+
+  // Fumbles this defense recovered = fumbles the other side lost.
+  const oppEntry = teamEntries.find((t) => t.team && t.team.id !== teamId && t.team.abbreviation !== teamAbbr);
+  if(oppEntry){
+    const fumCat = (oppEntry.statistics || []).find((c) => c.name === 'fumbles');
+    if(fumCat){
+      const idx = (fumCat.labels || []).indexOf('LOST');
+      if(idx !== -1){
+        let lost = 0;
+        for(const ath of fumCat.athletes || []){
+          const v = parseFloat(ath.stats && ath.stats[idx]);
+          if(!Number.isNaN(v)) lost += v;
+        }
+        if(lost) stats.FC = lost;
+      }
+    }
+  }
+
+  Object.assign(stats, defenseSpecialStats(summary, teamId));
   if(oppScore != null) stats.TPA = oppScore; // tiered range lookup happens in scoreStatLine via FG-style bare-number ranges
   return stats;
 }
@@ -1044,6 +1089,11 @@ function formatStatSummary(stats){
   if(stats.EP) parts.push(stats.EP + ' XP');
   if(stats.SK) parts.push(stats.SK + ' SACK');
   if(stats.IC) parts.push(stats.IC + ' INT');
+  if(stats.FC) parts.push(stats.FC + ' FR');
+  if(stats['#T']) parts.push(stats['#T'] + ' DEF TD');
+  if(stats.SF) parts.push(stats.SF + ' SAF');
+  const blocks = (stats.BLF || 0) + (stats.BLP || 0) + (stats.BLE || 0);
+  if(blocks) parts.push(blocks + ' BLK');
   if(stats.TPA != null) parts.push(stats.TPA + ' PA');
   return parts.join(', ');
 }
@@ -1245,6 +1295,10 @@ function starterRow(homePlayer, awayPlayer){
 }
 
 function renderMatchup(m, i){
+  // No confirmed lineups yet (preseason / between weeks): the worker sends
+  // whole rosters with no starters, so say that plainly instead of dressing
+  // a roster up as a set lineup.
+  const unset = lineup && lineup.lineupConfirmed === false;
   const rowCount = Math.max(m.home.starters.length, m.away.starters.length);
   const rows = Array.from({ length: rowCount }, (_, r) => starterRow(m.home.starters[r], m.away.starters[r])).join('');
   const benchCount = Math.max((m.home.bench || []).length, (m.away.bench || []).length);
@@ -1269,8 +1323,8 @@ function renderMatchup(m, i){
     </div>
     <div data-wp="${i}"></div>
     <div class="starters-table">${rows || '<div class="starter-row">No starters yet</div>'}</div>
-    ${benchRows ? `<button type="button" class="bench-toggle" data-benchtoggle="${i}">Bench &darr;</button>
-    <div class="bench-rows" data-bench="${i}" hidden>${benchRows}</div>` : ''}
+    ${benchRows ? `<button type="button" class="bench-toggle" data-benchtoggle="${i}">${unset ? 'Roster' : 'Bench'} &darr;</button>
+    <div class="bench-rows" data-bench="${i}"${unset ? '' : ' hidden'}>${benchRows}</div>` : ''}
   </div></div>`;
 }
 
