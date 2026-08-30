@@ -440,13 +440,22 @@ h1{
   text-overflow:ellipsis;
   max-width:130px;
 }
-a.p-name{ text-decoration:none; }
-a.p-name:hover{ text-decoration:underline; }
+button.p-name, .game-link{
+  background:none;
+  border:none;
+  padding:0;
+  margin:0;
+  font-family:inherit;
+  text-align:inherit;
+  cursor:pointer;
+}
+button.p-name{ text-decoration:none; }
+button.p-name:hover{ text-decoration:underline; }
 .p-team{ font-family:'DM Mono',monospace; font-size:9.5px; color:var(--ink-faint); flex-shrink:0; }
 .p-sub{ display:flex; flex-direction:column; gap:1px; margin-top:2px; }
 .p-block.home .p-sub{ align-items:flex-end; }
 .p-block.away .p-sub{ align-items:flex-start; }
-.p-sub span, .p-sub a{
+.p-sub span, .p-sub button{
   font-family:'DM Mono',monospace;
   font-size:9.5px;
   color:var(--ink-faint);
@@ -456,8 +465,8 @@ a.p-name:hover{ text-decoration:underline; }
   max-width:170px;
   text-decoration:none;
 }
-.p-sub a:hover{ text-decoration:underline; }
-.p-sub .live, .p-sub a.live{ color:var(--red-ink); font-weight:600; }
+.p-sub button:hover{ text-decoration:underline; }
+.p-sub .live, .p-sub button.live{ color:var(--red-ink); font-weight:600; }
 .p-score{
   font-family:'Bebas Neue',sans-serif;
   font-size:19px;
@@ -482,6 +491,49 @@ a.p-name:hover{ text-decoration:underline; }
 .pos-tag.pos-TE{ background:color-mix(in srgb, var(--pos-te) 16%, transparent); color:var(--pos-te); }
 .pos-tag.pos-D{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
 .pos-tag.pos-PK{ background:color-mix(in srgb, var(--ink-dim) 16%, transparent); color:var(--ink-dim); }
+
+/* ---------- Player card modal ---------- */
+#playerModal:empty{ display:none; }
+.pm-backdrop{
+  position:fixed; inset:0;
+  background:rgba(10,12,26,0.55);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  z-index:100;
+}
+.pm-card{
+  position:relative;
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  padding:20px;
+  width:100%;
+  max-width:340px;
+}
+.pm-close{
+  position:absolute; top:8px; right:8px;
+  background:none; border:none; cursor:pointer;
+  font-size:22px; line-height:1; color:var(--ink-faint);
+  padding:6px;
+}
+.pm-close:hover{ color:var(--ink); }
+.pm-head{ display:flex; align-items:center; gap:12px; }
+.pm-avatar{
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'DM Mono',monospace; font-weight:500; font-size:14px;
+  color:#fff;
+}
+.pm-id{ flex:1; min-width:0; }
+.pm-name{ font-size:16px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pm-meta{ display:flex; align-items:center; gap:6px; margin-top:4px; }
+.pm-team{ font-family:'DM Mono',monospace; font-size:10.5px; color:var(--ink-faint); }
+.pm-points{ font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--ink); text-align:center; line-height:1; flex-shrink:0; }
+.pm-points span{ display:block; font-family:'DM Mono',monospace; font-size:8.5px; font-weight:500; color:var(--ink-faint); letter-spacing:0.5px; margin-top:3px; }
+.pm-status{ margin-top:14px; font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-dim); }
+.pm-status.live{ color:var(--red-ink); font-weight:600; }
+.pm-stats{ margin-top:6px; font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-faint); line-height:1.5; }
 
 @media (max-width: 480px){
   h1{ font-size:26px; }
@@ -515,6 +567,7 @@ a.p-name:hover{ text-decoration:underline; }
   <div id="leagueStrip"></div>
   <div id="content"></div>
 </div>
+<div id="playerModal"></div>
 
 <script>
 const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
@@ -537,11 +590,7 @@ const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" }
 let demoIdSeq = 0;
 function demoPlayer(name, pos, nflTeam, points, contextText, live, statLine){
   demoIdSeq += 1;
-  // These are real players/teams, so the "player" link goes to a real ESPN
-  // search result even though the fake matchup/game itself obviously isn't.
-  const playerHref = pos === 'D' ? espnTeamUrl(nflTeam) : espnPlayerUrl(null, name);
-  const gameHref = 'https://www.espn.com/nfl/scoreboard';
-  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '', playerHref, gameHref };
+  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '' };
 }
 const DEMO_MATCHUPS = [
   {
@@ -602,7 +651,7 @@ function renderDemo(){
   const computedByPlayerId = {};
   for(const m of DEMO_MATCHUPS){
     for(const p of [...m.home.starters, ...m.away.starters]){
-      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine, playerHref: p.playerHref, gameHref: p.gameHref };
+      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine };
     }
   }
   document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
@@ -887,21 +936,6 @@ function gameContextText(game){
   return '';
 }
 
-// Every player/DST name and every game-status line links out to ESPN so you
-// can follow along live — direct player/gamecast pages when we've resolved
-// a real ESPN id, falling back to a name search when we haven't (yet, or a
-// player ESPN just doesn't have deep-linkable, e.g. inactive all game).
-function espnPlayerUrl(athleteId, name){
-  if(athleteId) return `https://www.espn.com/nfl/player/_/id/${athleteId}`;
-  return `https://www.espn.com/search/_/q/${encodeURIComponent(name)}`;
-}
-function espnTeamUrl(espnAbbr){
-  return `https://www.espn.com/nfl/team/_/name/${(espnAbbr || '').toLowerCase()}`;
-}
-function espnGameUrl(eventId){
-  return eventId ? `https://www.espn.com/nfl/game/_/gameId/${eventId}` : null;
-}
-
 /* ---------- Per-player point computation ---------- */
 function computePoints(player, gamesByTeam, rules){
   const espnAbbr = player.nflTeam ? (MFL_TO_ESPN_TEAM[player.nflTeam] || player.nflTeam) : null;
@@ -914,8 +948,6 @@ function computePoints(player, gamesByTeam, rules){
     contextText: gameContextText(game),
     contextLive: !!(game && game.state === 'in'),
     statLine: '',
-    playerHref: player.pos === 'D' ? espnTeamUrl(espnAbbr) : espnPlayerUrl(null, player.name),
-    gameHref: espnGameUrl(game && game.eventId),
   };
   if(!game || !game.eventId || !eventRules) return result;
 
@@ -931,7 +963,6 @@ function computePoints(player, gamesByTeam, rules){
 
   const rec = findPlayer(box.playerIndex, player.name);
   if(!rec) return result; // inactive, bye, or a name we couldn't match
-  result.playerHref = espnPlayerUrl(rec.athleteId, player.name);
 
   const stats = offenseStats(rec.categories);
   const fgDistances = [];
@@ -963,17 +994,17 @@ function avatarColor(name){
   return `hsl(${hash % 360} 50% 42%)`;
 }
 
+// Every player/DST name and every game-status line opens an in-app player
+// card (see openPlayerCard below) instead of linking out anywhere.
+let playerRegistry = {}; // player id -> { player, computed }, refreshed on every render
 function playerBlock(p, computed, side){
-  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '', playerHref: null, gameHref: null };
-  const nameEl = c.playerHref
-    ? `<a class="p-name" href="${escapeHtml(c.playerHref)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>`
-    : `<span class="p-name">${escapeHtml(p.name)}</span>`;
+  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '' };
+  playerRegistry[p.id] = { player: p, computed: c };
+  const nameEl = `<button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`;
   const teamEl = `<span class="p-team">${escapeHtml(p.nflTeam || '')}</span>`;
   const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
   const contextEl = c.contextText
-    ? (c.gameHref
-        ? `<a class="game-link${c.contextLive ? ' live' : ''}" href="${escapeHtml(c.gameHref)}" target="_blank" rel="noopener">${escapeHtml(c.contextText)}</a>`
-        : `<span${c.contextLive ? ' class="live"' : ''}>${escapeHtml(c.contextText)}</span>`)
+    ? `<button type="button" class="game-link js-player-card${c.contextLive ? ' live' : ''}" data-player-id="${escapeHtml(p.id)}">${escapeHtml(c.contextText)}</button>`
     : '';
   return `<div class="p-block ${side}">
     <div class="p-top">${top}</div>
@@ -983,6 +1014,44 @@ function playerBlock(p, computed, side){
     </div>
   </div>`;
 }
+
+function openPlayerCard(playerId){
+  const entry = playerRegistry[playerId];
+  if(!entry) return;
+  const { player: p, computed: c } = entry;
+  const pos = p.pos || '';
+  const modal = document.getElementById('playerModal');
+  modal.innerHTML = `<div class="pm-backdrop" id="pmBackdrop">
+    <div class="pm-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(p.name)} player card">
+      <button type="button" class="pm-close" id="pmClose" aria-label="Close">&times;</button>
+      <div class="pm-head">
+        <span class="pm-avatar" style="background:${avatarColor(p.name)}">${escapeHtml(initials(p.name))}</span>
+        <div class="pm-id">
+          <div class="pm-name">${escapeHtml(p.name)}</div>
+          <div class="pm-meta">
+            <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
+            <span class="pm-team">${escapeHtml(p.nflTeam || 'FA')}</span>
+          </div>
+        </div>
+        <div class="pm-points">${(c.points || 0).toFixed(1)}<span>PTS</span></div>
+      </div>
+      ${c.contextText ? `<div class="pm-status${c.contextLive ? ' live' : ''}">${escapeHtml(c.contextText)}</div>` : ''}
+      <div class="pm-stats">${c.statLine ? escapeHtml(c.statLine) : 'No stats yet this week.'}</div>
+    </div>
+  </div>`;
+  document.getElementById('pmBackdrop').onclick = (e) => { if(e.target.id === 'pmBackdrop') closePlayerCard(); };
+  document.getElementById('pmClose').onclick = closePlayerCard;
+}
+function closePlayerCard(){
+  document.getElementById('playerModal').innerHTML = '';
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-player-card');
+  if(btn) openPlayerCard(btn.dataset.playerId);
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closePlayerCard();
+});
 
 function starterRow(homePlayer, awayPlayer, computedByPlayerId){
   const pos = (homePlayer || awayPlayer).pos || '';
