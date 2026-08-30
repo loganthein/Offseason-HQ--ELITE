@@ -134,7 +134,7 @@ const TOOLS = [
   },
   {
     name: "query_mfl_live",
-    description: `Pull live data for the CURRENT (${MFL_SEASON}) in-progress season directly from MFL — this week's live or final scores, current standings, recent waiver/trade activity, or current rosters. Use this instead of query_league_database for anything about the in-progress season, "this week," "right now," or recent transactions, since the SQL database stops at 2025. The response includes a franchiseNames map (MFL franchise id -> current team name) alongside the raw data — cross-reference any franchise id fields in the data against it rather than guessing. Typical shapes: leagueStandings has wins/losses/points-for per franchise; weeklyResults/liveScoring have per-franchise (often per-player) scores for a week; transactions has recent adds/drops/trades with timestamps; rosters mirrors the historical roster shape. The exact fields can vary by type — read what actually comes back rather than assuming.`,
+    description: `Pull live data for the CURRENT (${MFL_SEASON}) in-progress season directly from MFL — this week's live or final scores, current standings, recent waiver/trade activity, or current rosters ("who's on X's roster right now" -> type "rosters"). Use this instead of query_league_database for anything about the in-progress season, "this week," "right now," current roster, or recent transactions, since the SQL database stops at 2025. The response includes franchiseNames (MFL franchise id -> current team name) and playerNames (MFL player id -> {name, pos}) lookups alongside the raw data — cross-reference any id field in the data against those rather than guessing or showing a raw id to the user. Typical shapes: leagueStandings has wins/losses/points-for per franchise; weeklyResults/liveScoring have per-franchise (often per-player) scores for a week; transactions has recent adds/drops/trades with timestamps; rosters has each franchise's player ids plus contractStatus (keeper cost) and drafted (how acquired). The exact fields can vary by type — read what actually comes back rather than assuming.`,
     input_schema: {
       type: "object",
       properties: {
@@ -195,6 +195,31 @@ async function mflFetch(type, params = "") {
   }
 }
 
+// MFL returns player names as "Lastname, Firstname" (e.g. "Walker III,
+// Kenneth"); team defenses have no comma (e.g. "Green Bay Packers").
+function toFirstLast(mflName) {
+  if (!mflName.includes(",")) return mflName;
+  const [last, first] = mflName.split(",").map((s) => s.trim());
+  return `${first} ${last}`;
+}
+
+// Walks the response looking for every value under a key literally named
+// "id" — covers player ids in rosters/liveScoring/weeklyResults/
+// transactions without needing to hand-model each type's exact shape.
+// Franchise ids get swept up too; they just won't match anything in the
+// players lookup below, so they're harmless noise.
+function collectIds(obj, out = new Set()) {
+  if (Array.isArray(obj)) {
+    for (const item of obj) collectIds(item, out);
+  } else if (obj && typeof obj === "object") {
+    for (const [key, val] of Object.entries(obj)) {
+      if (key === "id" && typeof val === "string") out.add(val);
+      else collectIds(val, out);
+    }
+  }
+  return out;
+}
+
 async function queryMflLive({ type, week }) {
   if (!MFL_LIVE_TYPES.includes(type)) {
     throw new Error(`Unsupported type "${type}". Use one of: ${MFL_LIVE_TYPES.join(", ")}`);
@@ -205,7 +230,20 @@ async function queryMflLive({ type, week }) {
   const [league, data] = await Promise.all([mflFetch("league"), mflFetch(type, params)]);
   const franchiseNames = {};
   for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
-  return { franchiseNames, data };
+
+  // Resolve just the ids that showed up in this response, not the whole
+  // league-wide player database — MFL's players export supports filtering
+  // to specific ids via PLAYERS=.
+  const ids = [...collectIds(data)].filter((id) => !franchiseNames[id]);
+  const playerNames = {};
+  if (ids.length) {
+    const players = await mflFetch("players", `&PLAYERS=${ids.join(",")}`);
+    for (const p of players.players?.player || []) {
+      playerNames[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position };
+    }
+  }
+
+  return { franchiseNames, playerNames, data };
 }
 
 async function callClaude(env, messages, { stream, tools = TOOLS, system = SYSTEM_PROMPT }) {
