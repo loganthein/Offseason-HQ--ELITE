@@ -50,3 +50,13 @@ homeHtml = injectFonts(homeHtml).replace('{{FACTS}}', facts);
 checkResolved(homeHtml, 'home/template.html');
 fs.writeFileSync(homeOutPath, homeHtml);
 console.log('Wrote', homeOutPath, `(${(homeHtml.length / 1024).toFixed(0)} KB)`);
+
+// --- live/index.html (live scoreboard) ---
+const liveOutPath = path.join(root, '..', 'live', 'index.html');
+let liveHtml = fs.readFileSync(path.join(root, '..', 'live', 'template.html'), 'utf8');
+
+liveHtml = injectFonts(liveHtml);
+
+checkResolved(liveHtml, 'live/template.html');
+fs.writeFileSync(liveOutPath, liveHtml);
+console.log('Wrote', liveOutPath, `(${(liveHtml.length / 1024).toFixed(0)} KB)`);

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Scoreboard — #ELITE</title>
+<style>
+@font-face{
+  font-family:'Bebas Neue';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_BEBAS}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO400}}) format('woff2');
+}
+@font-face{
+  font-family:'DM Mono';
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_DMMONO500}}) format('woff2');
+}
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url(data:font/woff2;base64,{{FONT_INTER}}) format('woff2');
+}
+
+:root{
+  --bg:#edf1f8;
+  --tile:#ffffff;
+  --tile-hover:#f5f8fd;
+  --ink:#1a1e35;
+  --ink-dim:#666e93;
+  --ink-faint:#9aa1c2;
+  --border:#dde3f2;
+  --border-soft:#e8ecf7;
+  --red:#d5473b;
+  --red-dim:#fbe6e3;
+  --red-ink:#a5372e;
+  --blue:#3059d6;
+  --blue-dim:#e2e9fc;
+  --blue-ink:#24449e;
+  --pos-qb:#c96a2e;
+  --pos-rb:#1f8f6f;
+  --pos-wr:#7860c9;
+  --pos-te:#c1508d;
+  --pos-d:#5b6178;
+  --good:#1f8f5b;
+  --good-dim:#dcf2e6;
+  --good-ink:#166b44;
+  --warn:#a3791a;
+  --warn-dim:#f7ecd2;
+  --warn-ink:#7a5a10;
+  --shadow:0 1px 2px rgba(26,30,53,0.04), 0 8px 24px -12px rgba(26,30,53,0.10);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1226;
+  --tile:#181c38;
+  --tile-hover:#1f2444;
+  --ink:#eef0fb;
+  --ink-dim:#a7addc;
+  --ink-faint:#6f76a3;
+  --border:#2a2f57;
+  --border-soft:#232852;
+  --red:#f0796d;
+  --red-dim:rgba(240,121,109,0.14);
+  --red-ink:#f7a89f;
+  --blue:#7f9dff;
+  --blue-dim:rgba(127,157,255,0.14);
+  --blue-ink:#a9bdff;
+  --pos-qb:#e08a4e;
+  --pos-rb:#3fbf98;
+  --pos-wr:#a08de8;
+  --pos-te:#e17cb0;
+  --pos-d:#8891b0;
+  --good:#3fbf82;
+  --good-dim:rgba(63,191,130,0.16);
+  --good-ink:#8fe0b6;
+  --warn:#e0b84e;
+  --warn-dim:rgba(224,184,78,0.16);
+  --warn-ink:#f0d38f;
+  --shadow:0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.4);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1226;
+    --tile:#181c38;
+    --tile-hover:#1f2444;
+    --ink:#eef0fb;
+    --ink-dim:#a7addc;
+    --ink-faint:#6f76a3;
+    --border:#2a2f57;
+    --border-soft:#232852;
+    --red:#f0796d;
+    --red-dim:rgba(240,121,109,0.14);
+    --red-ink:#f7a89f;
+    --blue:#7f9dff;
+    --blue-dim:rgba(127,157,255,0.14);
+    --blue-ink:#a9bdff;
+    --pos-qb:#e08a4e;
+    --pos-rb:#3fbf98;
+    --pos-wr:#a08de8;
+    --pos-te:#e17cb0;
+    --pos-d:#8891b0;
+    --good:#3fbf82;
+    --good-dim:rgba(63,191,130,0.16);
+    --good-ink:#8fe0b6;
+    --warn:#e0b84e;
+    --warn-dim:rgba(224,184,78,0.16);
+    --warn-ink:#f0d38f;
+    --shadow:0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.4);
+  }
+}
+
+*{ box-sizing:border-box; }
+html,body{ max-width:100%; overflow-x:hidden; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:1180px; margin:0 auto; padding:20px 16px 70px; }
+a{ color:var(--blue); text-decoration:none; }
+::selection{ background:var(--blue-dim); }
+
+/* ---------- Header ---------- */
+header{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:16px;
+  margin-bottom:18px;
+  border-bottom:1px solid var(--border);
+}
+.brand{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.eyebrow{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  letter-spacing:2px;
+  color:var(--red);
+  text-transform:uppercase;
+  font-weight:500;
+}
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-weight:400;
+  font-size:32px;
+  letter-spacing:0.5px;
+  margin:0;
+  line-height:1;
+  text-transform:uppercase;
+}
+.header-right{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.nav-link, .theme-toggle{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.5px;
+  background:var(--tile);
+  border:1px solid var(--border);
+  color:var(--ink-dim);
+  border-radius:20px;
+  padding:6px 13px;
+  cursor:pointer;
+}
+.nav-link:hover, .theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+/* ---------- Status banner ---------- */
+.banner{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 16px;
+  font-size:13px;
+  color:var(--ink-dim);
+  margin-bottom:18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.banner b{ color:var(--ink); }
+.banner.info{ background:var(--blue-dim); border-color:var(--blue-dim); }
+.refresh-note{ font-family:'DM Mono',monospace; font-size:10.5px; color:var(--ink-faint); white-space:nowrap; }
+.dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--good); margin-right:5px; }
+.dot.stale{ background:var(--ink-faint); }
+
+/* ---------- Empty state ---------- */
+.empty{
+  text-align:center;
+  padding:60px 20px;
+  color:var(--ink-dim);
+}
+.empty h2{ font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--ink); margin:0 0 8px; text-transform:uppercase; }
+
+/* ---------- Matchup grid ---------- */
+.matchup-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
+  gap:14px;
+}
+.matchup-card{
+  background:var(--tile);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.matchup-score-row{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  padding:14px 16px;
+  gap:10px;
+  border-bottom:1px solid var(--border-soft);
+  cursor:pointer;
+}
+.matchup-team{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.matchup-team.away{ align-items:flex-end; text-align:right; }
+.matchup-team .name{
+  font-size:13px;
+  font-weight:600;
+  color:var(--ink-dim);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.matchup-team.leading .name{ color:var(--ink); }
+.matchup-team .score{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:34px;
+  letter-spacing:0.3px;
+  color:var(--ink-faint);
+  line-height:1;
+}
+.matchup-team.leading .score{ color:var(--good); }
+.matchup-vs{ font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:1px; }
+.matchup-toggle{ text-align:center; font-family:'DM Mono',monospace; font-size:10px; color:var(--ink-faint); margin-top:2px; grid-column:1/-1; }
+
+.starters{ display:none; padding:8px 0; }
+.starters.open{ display:grid; grid-template-columns:1fr 1fr; }
+.starters .side{ padding:6px 12px; }
+.starters .side + .side{ border-left:1px solid var(--border-soft); }
+.starter-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 4px;
+  border-bottom:1px solid var(--border-soft);
+  font-size:12.5px;
+}
+.starter-row:last-child{ border-bottom:none; }
+.pos-tag{
+  font-family:'DM Mono',monospace;
+  font-size:9.5px;
+  font-weight:500;
+  letter-spacing:0.5px;
+  padding:2px 6px;
+  border-radius:5px;
+  flex-shrink:0;
+  min-width:26px;
+  text-align:center;
+}
+.pos-tag.pos-QB{ background:color-mix(in srgb, var(--pos-qb) 16%, transparent); color:var(--pos-qb); }
+.pos-tag.pos-RB{ background:color-mix(in srgb, var(--pos-rb) 16%, transparent); color:var(--pos-rb); }
+.pos-tag.pos-WR{ background:color-mix(in srgb, var(--pos-wr) 16%, transparent); color:var(--pos-wr); }
+.pos-tag.pos-TE{ background:color-mix(in srgb, var(--pos-te) 16%, transparent); color:var(--pos-te); }
+.pos-tag.pos-D{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
+.starter-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+.starter-game{ font-family:'DM Mono',monospace; font-size:10px; color:var(--ink-faint); white-space:nowrap; }
+.starter-game.live{ color:var(--red-ink); }
+.starter-game .rz{ color:var(--red); font-weight:600; }
+.starter-points{ font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--ink); min-width:38px; text-align:right; }
+
+@media (max-width: 480px){
+  .starters.open{ grid-template-columns:1fr; }
+  .starters .side + .side{ border-left:none; border-top:1px solid var(--border-soft); }
+  h1{ font-size:26px; }
+  .matchup-team .score{ font-size:28px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div>
+        <div class="eyebrow">#ELITE Fantasy Football</div>
+        <h1>Live Scoreboard</h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <a class="nav-link" href="../index.html">&larr; DERIK</a>
+      <a class="nav-link" href="../hq/index.html">Offseason HQ</a>
+      <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn">Theme: Auto</button>
+    </div>
+  </header>
+
+  <div id="banner"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
+const POLL_MS = 25000;
+
+/* ---------- Theme (matches the rest of the site) ---------- */
+const THEMES = ['auto','light','dark'];
+function getStoredTheme(){
+  try{ return localStorage.getItem('elite-hq-theme') || 'auto'; } catch(e){ return 'auto'; }
+}
+function applyTheme(theme){
+  const root = document.documentElement;
+  if(theme === 'auto'){ root.removeAttribute('data-theme'); }
+  else{ root.setAttribute('data-theme', theme); }
+  document.getElementById('themeBtn').textContent = 'Theme: ' + theme.charAt(0).toUpperCase() + theme.slice(1);
+  try{ localStorage.setItem('elite-hq-theme', theme); } catch(e){}
+}
+function cycleTheme(){
+  const cur = getStoredTheme();
+  applyTheme(THEMES[(THEMES.indexOf(cur)+1) % THEMES.length]);
+}
+applyTheme(getStoredTheme());
+
+/* ---------- Rendering ---------- */
+const openMatchups = new Set(); // franchiseId pair keys the user has expanded, preserved across polls
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function gameLabel(game){
+  if(!game) return '';
+  if(game.final) return 'Final';
+  if(game.state === 'pre') return 'Upcoming';
+  if(game.state === 'in'){
+    const rz = game.redZone ? '<span class="rz">&#9679;</span> ' : '';
+    return rz + 'Q' + (game.quarter ?? '?') + ' ' + (game.clock ?? '');
+  }
+  return '';
+}
+
+function starterRow(p){
+  const pos = p.pos || '';
+  return `<div class="starter-row">
+    <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
+    <span class="starter-name">${escapeHtml(p.name)}</span>
+    <span class="starter-game${p.game && p.game.state === 'in' ? ' live' : ''}">${gameLabel(p.game)}</span>
+    <span class="starter-points">${(p.points ?? 0).toFixed(1)}</span>
+  </div>`;
+}
+
+function matchupKey(m){ return m.home.franchiseId + '-' + m.away.franchiseId; }
+
+function renderMatchup(m){
+  const key = matchupKey(m);
+  const homeLead = m.home.score > m.away.score;
+  const awayLead = m.away.score > m.home.score;
+  const isOpen = openMatchups.has(key);
+  return `<div class="matchup-card">
+    <div class="matchup-score-row" onclick="toggleMatchup('${key}')">
+      <div class="matchup-team home${homeLead ? ' leading' : ''}">
+        <span class="name">${escapeHtml(m.home.team)}</span>
+        <span class="score">${m.home.score.toFixed(1)}</span>
+      </div>
+      <span class="matchup-vs">VS</span>
+      <div class="matchup-team away${awayLead ? ' leading' : ''}">
+        <span class="name">${escapeHtml(m.away.team)}</span>
+        <span class="score">${m.away.score.toFixed(1)}</span>
+      </div>
+      <div class="matchup-toggle">${isOpen ? '&minus; hide starters' : '&plus; show starters'}</div>
+    </div>
+    <div class="starters${isOpen ? ' open' : ''}" id="starters-${key}">
+      <div class="side">${m.home.starters.map(starterRow).join('') || '<div class="starter-row">No starters yet</div>'}</div>
+      <div class="side">${m.away.starters.map(starterRow).join('') || '<div class="starter-row">No starters yet</div>'}</div>
+    </div>
+  </div>`;
+}
+
+function toggleMatchup(key){
+  if(openMatchups.has(key)) openMatchups.delete(key);
+  else openMatchups.add(key);
+  const el = document.getElementById('starters-' + key);
+  if(el){
+    el.classList.toggle('open');
+    const toggleLabel = el.previousElementSibling.querySelector('.matchup-toggle');
+    if(toggleLabel) toggleLabel.innerHTML = el.classList.contains('open') ? '&minus; hide starters' : '&plus; show starters';
+  }
+}
+
+function render(data, ok){
+  const bannerEl = document.getElementById('banner');
+  const contentEl = document.getElementById('content');
+
+  if(!ok){
+    bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>Couldn't reach the live scoreboard. Retrying&hellip;</span></div>`;
+    return;
+  }
+
+  if(data.status === 'unavailable' || data.status === 'not_started'){
+    bannerEl.innerHTML = `<div class="banner info">${escapeHtml(data.message || "Live scoring isn't available until the season starts.")}</div>`;
+  } else {
+    const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    bannerEl.innerHTML = `<div class="banner"><span><span class="dot"></span>Live &mdash; Week ${escapeHtml(data.week)}</span><span class="refresh-note">Updated ${now}</span></div>`;
+  }
+
+  if(!data.matchups || !data.matchups.length){
+    contentEl.innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
+    return;
+  }
+  contentEl.innerHTML = `<div class="matchup-grid">${data.matchups.map(renderMatchup).join('')}</div>`;
+}
+
+async function poll(){
+  try{
+    const res = await fetch(LIVE_API_URL);
+    const data = await res.json();
+    render(data, true);
+  } catch(e){
+    render(null, false);
+  }
+}
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
