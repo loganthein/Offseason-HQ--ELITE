@@ -335,6 +335,79 @@ async function handleMflExplore(request, env) {
   });
 }
 
+// --- Scoring rules (parsed from MFL's TYPE=rules, applied to real stats we
+// pull ourselves from ESPN — MFL's own liveScoring point values are never
+// used, only its starter list). Confirmed against this league's real rules
+// export: two groups, "QB|RB|WR|TE|PK" and "Def", each a flat list of
+// {event, points, range} triples. "*N" means N points per unit of the stat
+// (e.g. PY *.04 = 1pt/25 passing yards); a bare number means a flat bonus
+// for landing in that range (FG distance tiers, defensive points-allowed
+// brackets) — those ranges are mutually exclusive per event.
+function parseScoringRules(rulesData) {
+  const groups = rulesData?.rules?.positionRules || [];
+  const byPosition = {};
+  for (const g of groups) {
+    const rules = Array.isArray(g.rule) ? g.rule : g.rule ? [g.rule] : [];
+    const byEvent = {};
+    for (const r of rules) {
+      const event = r.event?.$t;
+      const pointsRaw = r.points?.$t ?? "";
+      const [minStr, maxStr] = (r.range?.$t || "0-999999").split("-");
+      const perUnit = pointsRaw.startsWith("*");
+      const points = Number(pointsRaw.replace("*", ""));
+      if (!event || Number.isNaN(points)) continue;
+      (byEvent[event] ||= []).push({ min: Number(minStr), max: Number(maxStr), points, perUnit });
+    }
+    for (const posKey of (g.positions || "").split("|")) {
+      if (posKey) byPosition[posKey] = byEvent;
+    }
+  }
+  return byPosition;
+}
+
+// stats: {EVENT_CODE: count, ...} for per-unit events (PY, RY, CC, SK, ...).
+// For FG specifically, pass individual attempt distances instead, since the
+// point value depends on each kick's distance, not the total made count.
+function scoreStatLine(stats, fgDistances, eventRules) {
+  let total = 0;
+  for (const [event, count] of Object.entries(stats || {})) {
+    const tiers = eventRules[event];
+    if (!tiers || !count) continue;
+    for (const tier of tiers) {
+      if (count < tier.min || count > tier.max) continue;
+      total += tier.perUnit ? tier.points * count : tier.points;
+      if (!tier.perUnit) break; // flat/tiered ranges are mutually exclusive
+    }
+  }
+  const fgTiers = eventRules.FG;
+  if (fgTiers) {
+    for (const dist of fgDistances || []) {
+      const tier = fgTiers.find((t) => dist >= t.min && dist <= t.max);
+      if (tier) total += tier.points;
+    }
+  }
+  return total;
+}
+
+async function handleMflExploreEspn(request, env) {
+  const url = new URL(request.url);
+  const date = url.searchParams.get("date"); // YYYYMMDD, a past completed game to inspect without a live one
+  const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${date ? `?dates=${date}` : ""}`;
+  const sbRes = await fetch(scoreboardUrl);
+  const scoreboard = await sbRes.json();
+  const completed = (scoreboard.events || []).find((e) => e.competitions?.[0]?.status?.type?.completed);
+  if (!completed) {
+    return new Response(JSON.stringify({ error: "No completed game found for that date", scoreboard }), {
+      headers: { "content-type": "application/json", ...corsHeaders(env, request) },
+    });
+  }
+  const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${completed.id}`);
+  const summary = await summaryRes.json();
+  return new Response(JSON.stringify({ eventId: completed.id, name: completed.name, boxscore: summary.boxscore || null }), {
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
+  });
+}
+
 async function handleLiveScores(request, env) {
   const url = new URL(request.url);
   const weekParam = url.searchParams.get("week");
@@ -697,6 +770,10 @@ export default {
 
     if (url.pathname === "/api/mfl-explore" && request.method === "GET") {
       return await handleMflExplore(request, env);
+    }
+
+    if (url.pathname === "/api/espn-explore" && request.method === "GET") {
+      return await handleMflExploreEspn(request, env);
     }
 
     return new Response("Not found", { status: 404, headers: corsHeaders(env, request) });
