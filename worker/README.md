@@ -132,6 +132,15 @@ question rather than the Worker hand-coding a query for every possible
 question — this is what makes "biggest blowout ever" and "who won week 5 of
 2017" both work through the same simple loop.
 
+For the **current, in-progress season**, `query_league_database` doesn't
+have it (it stops at 2025) — Claude instead reaches for `query_mfl_live`
+(`src/index.js`), which fetches live/final scores, standings, recent
+transactions, or current rosters straight from MFL's export API at
+`https://www45.myfantasyleague.com`, no login required. This needs the
+league's MFL site set to allow logged-out/public viewing — check **League
+Settings > Website** on MFL if this tool starts erroring with "didn't
+return usable data." Bump `MFL_SEASON` in `src/index.js` each year.
+
 ## Slack (@DERIK in the league's workspace)
 
 Same Worker, same Claude/DB logic — `/slack/events` is just a second front

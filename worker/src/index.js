@@ -9,7 +9,7 @@
 // worker/scripts/import-league-history.js. See worker/migrations/0001_init.sql
 // for the schema.
 
-const SYSTEM_PROMPT = `You are DERIK, the #ELITE Fantasy Football league historian. You answer questions about the league's full history (2013-present) using a SQLite database via the query_league_database tool. Always use the tool to look up facts rather than guessing — you have no league knowledge outside the database.
+const SYSTEM_PROMPT = `You are DERIK, the #ELITE Fantasy Football league historian. You answer questions about the league's full history (2013-2025) using a SQLite database via the query_league_database tool, and about the CURRENT in-progress season using the query_mfl_live tool, which pulls straight from MFL. Always use a tool to look up facts rather than guessing — you have no league knowledge outside these. query_league_database does not have the current season in it — for anything about "this week," "right now," current standings, or recent waiver/trade activity, use query_mfl_live instead.
 
 Schema:
 
@@ -113,16 +113,38 @@ const SLACK_FORMATTING_NOTE = `
 
 You're replying in Slack for this message, not the web chat. Use Slack's mrkdwn instead of standard markdown: *bold* with single asterisks (never **double**), no headers (#), and no tables — if the data is tabular, use a short bulleted list instead since Slack can't render tables. Keep it concise, channel-appropriate length.`;
 
+// Same league/season MFL is queried against as build/sync-mfl.js — bump
+// MFL_SEASON each year.
+const MFL_HOST = "www45.myfantasyleague.com";
+const MFL_LEAGUE_ID = "31492";
+const MFL_SEASON = 2026;
+const MFL_LIVE_TYPES = ["liveScoring", "weeklyResults", "leagueStandings", "transactions", "rosters"];
+
 const TOOLS = [
   {
     name: "query_league_database",
-    description: "Run a read-only SQL SELECT query against the league history database described in the system prompt. Returns rows as JSON.",
+    description: "Run a read-only SQL SELECT query against the league history database described in the system prompt. Covers seasons through 2025 only. Returns rows as JSON.",
     input_schema: {
       type: "object",
       properties: {
         sql: { type: "string", description: "A single SELECT statement." },
       },
       required: ["sql"],
+    },
+  },
+  {
+    name: "query_mfl_live",
+    description: `Pull live data for the CURRENT (${MFL_SEASON}) in-progress season directly from MFL — this week's live or final scores, current standings, recent waiver/trade activity, or current rosters. Use this instead of query_league_database for anything about the in-progress season, "this week," "right now," or recent transactions, since the SQL database stops at 2025. The response includes a franchiseNames map (MFL franchise id -> current team name) alongside the raw data — cross-reference any franchise id fields in the data against it rather than guessing. Typical shapes: leagueStandings has wins/losses/points-for per franchise; weeklyResults/liveScoring have per-franchise (often per-player) scores for a week; transactions has recent adds/drops/trades with timestamps; rosters mirrors the historical roster shape. The exact fields can vary by type — read what actually comes back rather than assuming.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: MFL_LIVE_TYPES, description: "Which live MFL data to pull." },
+        week: {
+          type: "integer",
+          description: "NFL week number. Required for liveScoring/weeklyResults; ignored for the other types. Omit for liveScoring to get the current week.",
+        },
+      },
+      required: ["type"],
     },
   },
   {
@@ -158,6 +180,32 @@ function assertSelectOnly(sql) {
     throw new Error("Disallowed keyword in query.");
   }
   return /\blimit\b/i.test(trimmed) ? trimmed : `${trimmed} LIMIT 200`;
+}
+
+async function mflFetch(type, params = "") {
+  const url = `https://${MFL_HOST}/${MFL_SEASON}/export?TYPE=${type}&L=${MFL_LEAGUE_ID}&JSON=1${params}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `MFL didn't return usable data for ${type} — the league's site may not be set to allow public (logged-out) viewing. Check MFL League Settings > Website for a "non-owner/public viewing" option.`
+    );
+  }
+}
+
+async function queryMflLive({ type, week }) {
+  if (!MFL_LIVE_TYPES.includes(type)) {
+    throw new Error(`Unsupported type "${type}". Use one of: ${MFL_LIVE_TYPES.join(", ")}`);
+  }
+  const needsWeek = type === "liveScoring" || type === "weeklyResults";
+  const params = needsWeek && week ? `&W=${week}` : "";
+
+  const [league, data] = await Promise.all([mflFetch("league"), mflFetch(type, params)]);
+  const franchiseNames = {};
+  for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
+  return { franchiseNames, data };
 }
 
 async function callClaude(env, messages, { stream, tools = TOOLS, system = SYSTEM_PROMPT }) {
@@ -203,9 +251,13 @@ async function runToolLoop(env, messages, system = SYSTEM_PROMPT) {
     for (const block of data.content.filter((b) => b.type === "tool_use")) {
       let content;
       try {
-        const safeSql = assertSelectOnly(block.input.sql);
-        const { results } = await env.DB.prepare(safeSql).all();
-        content = JSON.stringify(results).slice(0, 20000);
+        if (block.name === "query_mfl_live") {
+          content = JSON.stringify(await queryMflLive(block.input)).slice(0, 20000);
+        } else {
+          const safeSql = assertSelectOnly(block.input.sql);
+          const { results } = await env.DB.prepare(safeSql).all();
+          content = JSON.stringify(results).slice(0, 20000);
+        }
       } catch (e) {
         content = `Error: ${e.message}`;
       }
