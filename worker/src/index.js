@@ -305,6 +305,36 @@ function extractLiveFranchises(liveData) {
   return Array.isArray(franchises) ? franchises : [franchises];
 }
 
+// Temporary: fetch several candidate MFL export types side by side, timed,
+// to see which one actually carries starter/bench status without the
+// overhead of live-scoring, and to see the real shape of the scoring rules.
+// Remove once we've settled on the real data source for confirmed lineups.
+async function handleMflExplore(request, env) {
+  const url = new URL(request.url);
+  const week = url.searchParams.get("week") || "1";
+
+  const timed = async (type, params = "") => {
+    const start = Date.now();
+    try {
+      const data = await mflFetch(type, params);
+      return { type, ms: Date.now() - start, data };
+    } catch (e) {
+      return { type, ms: Date.now() - start, error: e.message };
+    }
+  };
+
+  const results = await Promise.all([
+    timed("rules"),
+    timed("rosters", `&W=${week}`),
+    timed("weeklyResults", `&W=${week}`),
+    timed("liveScoring", `&W=${week}`),
+  ]);
+
+  return new Response(JSON.stringify({ week, results }), {
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
+  });
+}
+
 async function handleLiveScores(request, env) {
   const url = new URL(request.url);
   const weekParam = url.searchParams.get("week");
@@ -663,6 +693,10 @@ export default {
           headers: { "content-type": "application/json", ...corsHeaders(env, request) },
         });
       }
+    }
+
+    if (url.pathname === "/api/mfl-explore" && request.method === "GET") {
+      return await handleMflExplore(request, env);
     }
 
     return new Response("Not found", { status: 404, headers: corsHeaders(env, request) });
