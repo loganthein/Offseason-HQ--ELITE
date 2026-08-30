@@ -535,11 +535,57 @@ button.p-name:hover{ text-decoration:underline; }
 .pm-status.live{ color:var(--red-ink); font-weight:600; }
 .pm-stats{ margin-top:6px; font-family:'DM Mono',monospace; font-size:11px; color:var(--ink-faint); line-height:1.5; }
 
+/* Drive tracker inside the player card (live games only) */
+.pm-drive{ margin-top:12px; padding:10px 12px; background:var(--bg); border:1px solid var(--border-soft); border-radius:10px; }
+.pm-drive-dd{ font-family:'DM Mono',monospace; font-size:11.5px; font-weight:500; color:var(--ink); display:flex; justify-content:space-between; gap:8px; }
+.pm-drive-dd .rz{ color:var(--red-ink); font-weight:600; }
+.pm-field{ position:relative; height:12px; margin:9px 0 3px; border-radius:4px; overflow:hidden;
+  background:repeating-linear-gradient(90deg,
+    color-mix(in srgb, var(--good) 10%, transparent) 0 10%,
+    color-mix(in srgb, var(--good) 17%, transparent) 10% 20%); }
+.pm-field .ball-marker{ position:absolute; top:-1px; bottom:-1px; width:3px; border-radius:2px; background:var(--ink); transition:left 0.6s ease; }
+.pm-field-labels{ display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:8.5px; color:var(--ink-faint); }
+.pm-lastplay{ margin-top:8px; font-size:10.5px; color:var(--ink-faint); line-height:1.45; }
+.pm-mfl{ display:block; margin-top:14px; text-align:center; font-family:'DM Mono',monospace; font-size:10.5px; color:var(--blue-ink); text-decoration:none; border:1px solid var(--border); padding:8px; border-radius:8px; }
+.pm-mfl:hover{ background:var(--tile-hover); }
+
+/* Score-change flash (patched in place, not re-rendered) */
+@keyframes scoreflash{ 0%{ color:var(--good); transform:scale(1.15); } 100%{} }
+.p-score.flash, .matchup-team .score.flash, .strip-score.flash{ animation:scoreflash 1.1s ease-out; }
+@keyframes tickerIn{ from{ background:var(--good-dim); } }
+
+/* Per-team yet-to-play / in-play / done line */
+.team-ytp{ font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-faint); margin-top:2px; }
+.team-ytp .live{ color:var(--red-ink); font-weight:600; }
+
+/* Bench (collapsed by default) */
+.bench-toggle{ width:100%; background:none; border:none; border-top:1px solid var(--border-soft); color:var(--ink-faint); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.6px; padding:9px; cursor:pointer; }
+.bench-toggle:hover{ color:var(--ink-dim); background:var(--tile-hover); }
+.bench-rows{ border-top:1px dashed var(--border-soft); }
+.bench-rows .starter-row .p-name, .bench-rows .starter-row .p-score{ opacity:0.7; }
+.bench-rows[hidden]{ display:none; }
+
+/* League feed ticker */
+.ticker{ background:var(--tile); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin-bottom:14px; overflow:hidden; }
+.ticker-head{ display:flex; align-items:center; gap:8px; width:100%; padding:9px 12px; background:none; border:none; cursor:pointer; text-align:left; font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.5px; color:var(--ink-dim); }
+.tk-dot{ width:7px; height:7px; border-radius:50%; background:var(--red); flex-shrink:0; }
+.ticker-head .tk-count{ margin-left:auto; color:var(--ink-faint); }
+.ticker-list{ max-height:190px; overflow-y:auto; border-top:1px solid var(--border-soft); }
+.ticker-list[hidden]{ display:none; }
+.ticker-item{ display:flex; gap:9px; padding:7px 12px; border-bottom:1px solid var(--border-soft); font-size:11px; color:var(--ink-dim); align-items:baseline; }
+.ticker-item:last-child{ border-bottom:none; }
+.ticker-item.new{ animation:tickerIn 1.2s ease-out; }
+.tk-time{ font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-faint); flex-shrink:0; min-width:56px; }
+.tk-text{ line-height:1.4; }
+.tk-text .tk-who{ font-weight:600; color:var(--ink); }
+.tk-text .tk-owner{ font-family:'DM Mono',monospace; font-size:9px; color:var(--blue-ink); }
+
 @media (max-width: 480px){
   h1{ font-size:26px; }
   .matchup-team .score{ font-size:28px; }
-  .p-name{ max-width:76px; font-size:11.5px; }
-  .p-sub span{ max-width:88px; }
+  .p-name{ max-width:84px; font-size:11.5px; }
+  .p-sub span, .p-sub button{ max-width:112px; }
+  .starters-table{ padding:2px 0; }
   .p-score{ font-size:16px; min-width:26px; }
   .pos-tag{ min-width:22px; font-size:8.5px; padding:2px 4px; }
   .starter-row{ padding:8px 6px; gap:4px; }
@@ -558,6 +604,7 @@ button.p-name:hover{ text-decoration:underline; }
     <div class="header-right">
       <a class="nav-link" href="../index.html">&larr; DERIK</a>
       <a class="nav-link" href="../hq/index.html">Offseason HQ</a>
+      <a class="nav-link" href="https://www45.myfantasyleague.com/2026/home/31492" target="_blank" rel="noopener">MFL &nearr;</a>
       <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn">Theme: Auto</button>
     </div>
   </header>
@@ -565,13 +612,27 @@ button.p-name:hover{ text-decoration:underline; }
   <div id="banner"></div>
   <div id="weekNav"></div>
   <div id="leagueStrip"></div>
+  <div id="ticker"></div>
   <div id="content"></div>
 </div>
 <div id="playerModal"></div>
 
 <script>
 const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
-const POLL_MS = 25000;
+
+// Split polling cadences (ms). The scoreboard is one cheap request that
+// carries every game's score/clock/drive situation, so it runs hot while any
+// game is live — that's what makes points move ahead of the TV broadcast
+// (which itself runs ~30-60s behind real time). Box scores are heavier
+// (one per live game) so they run at half that rate; MFL lineup data barely
+// changes mid-Sunday so it ambles. Everything pauses when the tab is hidden
+// and snaps a full refresh the moment it's visible again.
+const CADENCE = { lineup: 120000, sbLive: 10000, sbIdle: 60000, boxLive: 20000, boxIdle: 90000 };
+
+// Where lineup CHANGES happen — this app is read-only on purpose; managing
+// the roster links out to MFL itself (the only outbound links on the page).
+const MFL_LEAGUE_HOME = "https://www45.myfantasyleague.com/2026/home/31492";
+const MFL_LINEUP_URL = "https://www45.myfantasyleague.com/2026/options?L=31492&O=07";
 
 // ESPN's unofficial "site API" — blocked from Cloudflare Workers (403 from
 // Akamai) but works fine from a real browser, so every ESPN call happens
@@ -606,6 +667,10 @@ const DEMO_MATCHUPS = [
       demoPlayer('Darnell Mooney', 'WR', 'ATL', 0, 'Pregame', false, ''),
       demoPlayer('Chris Boswell', 'PK', 'PIT', 8.0, 'Final · PIT 20-16', false, '2 FG, 2 XP'),
       demoPlayer('Green Bay Packers', 'D', 'GB', 12.0, 'Q2 2:15', true, '3 SACK, 1 INT, 14 PA'),
+    ], bench: [
+      demoPlayer('Jaydon Blue', 'RB', 'DAL', 4.2, '● Q3 8:42', true, '28 YD, 1 REC'),
+      demoPlayer('Romeo Doubs', 'WR', 'GB', 7.8, 'Q2 2:15', true, '4 REC, 52 YD'),
+      demoPlayer('Hunter Henry', 'TE', 'NE', 0, 'Pregame', false, ''),
     ] },
     away: { franchiseId: 'd2', team: 'Seal Team Nix', starters: [
       demoPlayer('Bo Nix', 'QB', 'DEN', 24.5, 'Final · DEN 31-13', false, '301 YD, 4 TD'),
@@ -617,6 +682,9 @@ const DEMO_MATCHUPS = [
       demoPlayer('Chris Olave', 'WR', 'NO', 7.7, 'Q1 5:03', true, '4 REC, 47 YD'),
       demoPlayer('Cameron Dicker', 'PK', 'LAC', 6.0, 'Final · LAC 23-17', false, '1 FG, 3 XP'),
       demoPlayer('Denver Broncos', 'D', 'DEN', 15.0, 'Final · DEN 31-13', false, '4 SACK, 2 INT, 13 PA'),
+    ], bench: [
+      demoPlayer('Rashid Shaheed', 'WR', 'NO', 3.1, 'Q1 5:03', true, '2 REC, 21 YD'),
+      demoPlayer('Tyjae Spears', 'RB', 'TEN', 0, 'Pregame', false, ''),
     ] },
   },
   {
@@ -647,21 +715,67 @@ const DEMO_MATCHUPS = [
   },
 ];
 
+// Demo mode runs the exact same structural-render + patch pipeline as live
+// mode — it just fills `computed`, `lineup`, and the ticker with fixed data
+// first (including fake in-progress drive situations for a few live players
+// so the drive tracker and possession lines are visible without a game on).
 function renderDemo(){
-  const computedByPlayerId = {};
+  const POS_PROJ = { QB: 18, RB: 12, WR: 11, TE: 8, PK: 8, D: 8 };
+  const projections = {};
+  const driveByName = {
+    'Kenneth Walker III': { shortDownDistance: '2nd & 7', possessionText: 'SEA 41', lastPlayText: 'K.Walker rush to the SEA 41 for 6 yards.', yardLine: 41, hasBall: true },
+    'Kyren Williams': { shortDownDistance: '1st & Goal', possessionText: 'DAL 8', lastPlayText: 'M.Stafford pass to K.Williams to the DAL 8 for 12 yards.', yardLine: 92, hasBall: true },
+    'Terry McLaurin': { shortDownDistance: '3rd & 2', possessionText: 'PHI 33', lastPlayText: 'J.Daniels pass incomplete deep right.', yardLine: 67, hasBall: true },
+  };
   for(const m of DEMO_MATCHUPS){
-    for(const p of [...m.home.starters, ...m.away.starters]){
-      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine };
+    for(const side of [m.home, m.away]){
+      for(const p of [...(side.starters || []), ...(side.bench || [])]){
+        const phase = p.contextText === 'Pregame' ? 'pre' : p.live ? 'in' : 'post';
+        const frac = phase === 'pre' ? 1 : phase === 'in' ? 0.45 : 0;
+        projections[p.id] = phase === 'post' ? Math.round(p.points * 1.05 * 10) / 10
+          : phase === 'in' ? Math.round((p.points + (POS_PROJ[p.pos] || 8) * 0.5) * 10) / 10
+          : (POS_PROJ[p.pos] || 8);
+        const qc = p.contextText.match(/Q(\d) (\d+:\d+)/) || [];
+        const drive = driveByName[p.name];
+        const game = phase === 'in' ? {
+          state: 'in', final: false, eventId: null,
+          quarter: Number(qc[1]) || 3, clock: qc[2] || '8:42',
+          redZone: p.contextText.startsWith('●'),
+          teamScore: 17, oppScore: 13,
+          selfAbbr: p.nflTeam, opponent: 'OPP', homeAway: 'home',
+          teamId: 't1', possessionId: drive && drive.hasBall ? 't1' : 'opp',
+          shortDownDistance: drive ? drive.shortDownDistance : null,
+          possessionText: drive ? drive.possessionText : null,
+          lastPlayText: drive ? drive.lastPlayText : null,
+          yardLine: drive ? drive.yardLine : null,
+        } : null;
+        computed[p.id] = {
+          points: p.points,
+          game,
+          contextText: game ? gameContextText(game) : p.contextText,
+          contextLive: phase === 'in',
+          statLine: p.statLine,
+          phase, frac,
+          hasBall: !!(drive && drive.hasBall && phase === 'in'),
+        };
+      }
     }
   }
+  lineup = { status: 'live', week: 1, totalWeeks: 1, season: 2026, matchups: DEMO_MATCHUPS, projections, rules: null };
+  currentWeek = 1;
+  tickerEvents = [
+    { when: 'Q3 8:42', text: 'DET: Amon-Ra St. Brown 12 Yd pass from Jared Goff (Jake Bates Kick)', who: [{ name: 'Amon-Ra St. Brown', owner: 'The SHIELD' }] },
+    { when: 'Q2 2:15', text: 'GB: Christian Watson 41 Yd pass from Jordan Love (Brandon McManus Kick)', who: [{ name: 'Christian Watson', owner: 'The SHIELD' }] },
+    { when: 'Q1 11:03', text: 'DEN: Bo Nix 5 Yd Run (Wil Lutz Kick)', who: [{ name: 'Bo Nix', owner: 'Seal Team Nix' }] },
+  ];
   document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
   document.getElementById('weekNav').innerHTML = `<div class="week-nav">
     <button disabled>&lsaquo;</button>
     <select disabled><option>Week 1 (demo)</option></select>
     <button disabled>&rsaquo;</button>
   </div>`;
-  renderLeagueStrip(DEMO_MATCHUPS, computedByPlayerId);
-  renderCarousel(DEMO_MATCHUPS, computedByPlayerId);
+  renderStructure();
+  patchDynamic();
 }
 
 /* ---------- Theme (matches the rest of the site) ---------- */
@@ -751,6 +865,7 @@ async function loadEspnScoreboard(nflWeek, season){
     const build = (self, opp) => ({
       eventId: event.id,
       opponent: opp.team && opp.team.abbreviation,
+      selfAbbr: self.team && self.team.abbreviation,
       quarter: status.period ?? null,
       clock: status.displayClock ?? null,
       state: status.type && status.type.state, // "pre" | "in" | "post"
@@ -760,6 +875,16 @@ async function loadEspnScoreboard(nflWeek, season){
       oppScore: Number(opp.score) || 0,
       teamId: self.team && self.team.id,
       oppId: opp.team && opp.team.id,
+      homeAway: self.homeAway || null,
+      // Live drive situation — only present while the game is in progress.
+      possessionId: situation.possession || null,
+      shortDownDistance: situation.shortDownDistanceText || situation.downDistanceText || null,
+      possessionText: situation.possessionText || null,
+      lastPlayText: (situation.lastPlay && situation.lastPlay.text) || null,
+      // Absolute 0-100 field position from ESPN; orientation is cosmetic in
+      // the modal's field bar (down-and-distance text is the authoritative
+      // display), so a flipped reading in a real game is a 1-line fix.
+      yardLine: (typeof situation.yardLine === 'number') ? situation.yardLine : null,
     });
     if(a.team && a.team.abbreviation) gamesByTeam[a.team.abbreviation] = build(a, b);
     if(b.team && b.team.abbreviation) gamesByTeam[b.team.abbreviation] = build(b, a);
@@ -925,15 +1050,39 @@ function formatStatSummary(stats){
 
 // The small gray line under a player's name: live clock, final score, or
 // pregame — same shape whether it's a real ESPN game object or demo data.
+// While the player's own offense has the ball, the down-and-distance rides
+// along ("Q3 8:42 · 2nd & 7") so you can see the drive from the matchup row.
 function gameContextText(game){
   if(!game) return '';
   if(game.final) return `Final · ${game.teamScore}-${game.oppScore}`;
   if(game.state === 'pre') return 'Pregame';
   if(game.state === 'in'){
     const rz = game.redZone ? '● ' : '';
-    return rz + 'Q' + (game.quarter ?? '?') + ' ' + (game.clock ?? '');
+    let t = rz + 'Q' + (game.quarter ?? '?') + ' ' + (game.clock ?? '');
+    if(gameHasBall(game) && game.shortDownDistance) t += ' · ' + game.shortDownDistance;
+    return t;
   }
   return '';
+}
+
+function gameHasBall(game){
+  return !!(game && game.state === 'in' && game.possessionId && game.possessionId === game.teamId);
+}
+
+// Fraction of this player's game still to be played (1 = hasn't kicked off,
+// 0 = final) — feeds live-adjusted projections and the win-probability
+// model. Overtime counts as a small nonzero remainder.
+function fracRemaining(game){
+  if(!game || game.state === 'pre') return 1;
+  if(game.final || game.state === 'post') return 0;
+  if(game.state === 'in'){
+    const q = game.quarter ?? 1;
+    const [mm, ss] = String(game.clock || '0:00').split(':').map(Number);
+    const secLeftQ = (Number.isFinite(mm) ? mm * 60 : 0) + (Number.isFinite(ss) ? ss : 0);
+    if(q > 4) return Math.max(0.01, Math.min(0.06, secLeftQ / 3600));
+    return Math.max(0, Math.min(1, ((4 - q) * 900 + secLeftQ) / 3600));
+  }
+  return 1;
 }
 
 /* ---------- Per-player point computation ---------- */
@@ -948,6 +1097,9 @@ function computePoints(player, gamesByTeam, rules){
     contextText: gameContextText(game),
     contextLive: !!(game && game.state === 'in'),
     statLine: '',
+    phase: game ? (game.state === 'in' ? 'in' : (game.final || game.state === 'post') ? 'post' : 'pre') : 'idle',
+    frac: fracRemaining(game),
+    hasBall: gameHasBall(game),
   };
   if(!game || !game.eventId || !eventRules) return result;
 
@@ -979,11 +1131,77 @@ function computePoints(player, gamesByTeam, rules){
 }
 
 /* ---------- State ---------- */
-let currentData = null; // last /api/live-scores payload
+let lineup = null;          // last /api/live-scores payload (or its demo equivalent)
 let currentWeek = null;
 let slideIndex = 0;
+let computed = {};          // player id -> computePoints() result
+let demoMode = false;
+let structuralKey = null;   // week + roster ids; a change means rebuild the DOM
+let playerRegistry = {};    // player id -> {id, name, pos, nflTeam}, rebuilt each structural render
+let openPid = null;         // player card currently open, kept live-updated by patches
+let firstPatchDone = false; // suppress the score-flash animation on the very first paint
+let tickerEvents = [];      // league feed, newest first
+let tickerOpen = true;
+let tickerPrimed = false;   // backlog harvested on first load doesn't animate
+let rosterIndex = [];       // normalized roster names for matching scoring-play text
+const seenPlays = new Set();
 
-/* ---------- Rendering ---------- */
+function allPlayersIn(matchups){
+  const out = [];
+  for(const m of matchups || []){
+    for(const side of [m.home, m.away]){
+      for(const p of side.starters || []) out.push({ ...p, owner: side.team });
+      for(const p of side.bench || []) out.push({ ...p, owner: side.team });
+    }
+  }
+  return out;
+}
+
+/* ---------- Live projections + win probability ---------- */
+// A player's live projection: points already scored plus the remaining share
+// of their pregame MFL projection, scaled by how much of their game is left
+// — the same model Sleeper/ESPN use for the in-game "proj" column.
+function livePlayerProj(p){
+  const c = computed[p.id];
+  const pts = (c && c.points) || 0;
+  const base = lineup && lineup.projections ? lineup.projections[p.id] : null;
+  const frac = c ? c.frac : 1;
+  if(base == null) return { proj: pts, frac };
+  return { proj: pts + base * frac, frac };
+}
+
+function teamLiveTotals(team){
+  let points = 0, proj = 0, fracSum = 0, n = 0, pre = 0, live = 0, done = 0;
+  for(const p of team.starters || []){
+    const c = computed[p.id];
+    points += (c && c.points) || 0;
+    const lp = livePlayerProj(p);
+    proj += lp.proj; fracSum += lp.frac; n++;
+    const phase = c ? c.phase : 'idle';
+    if(phase === 'pre') pre++;
+    else if(phase === 'in') live++;
+    else done++; // post, plus idle (bye / no game found): nothing left to come
+  }
+  return { points, proj, fracRemaining: n ? fracSum / n : 0, pre, live, done };
+}
+
+// Win probability via a normal approximation on the projected final margin:
+// mean = live-proj differential, sd shrinks with the square root of how much
+// of the combined games is left (~26 pts is a typical full-week matchup-
+// margin sd). The logistic curve stands in for the normal CDF. Once every
+// game is final the actual score decides it outright.
+function matchupWinProb(h, a){
+  const frac = (h.fracRemaining + a.fracRemaining) / 2;
+  if(frac <= 0.001){
+    if(h.points === a.points) return 50;
+    return h.points > a.points ? 100 : 0;
+  }
+  const sigma = Math.max(1.5, 26 * Math.sqrt(frac));
+  const p = 1 / (1 + Math.exp(-1.702 * ((h.proj - a.proj) / sigma)));
+  return Math.min(99, Math.max(1, Math.round(p * 100)));
+}
+
+/* ---------- Structural rendering (once per lineup/week change) ---------- */
 function initials(name){
   const words = String(name || '').split(/\s+/).filter(Boolean);
   return (words.map((w) => w[0]).join('').slice(0, 2) || '?').toUpperCase();
@@ -994,146 +1212,79 @@ function avatarColor(name){
   return `hsl(${hash % 360} 50% 42%)`;
 }
 
-// Every player/DST name and every game-status line opens an in-app player
-// card (see openPlayerCard below) instead of linking out anywhere.
-let playerRegistry = {}; // player id -> { player, computed }, refreshed on every render
-function playerBlock(p, computed, side){
-  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '' };
-  playerRegistry[p.id] = { player: p, computed: c };
+// The structural pass renders shells with data attributes; every dynamic
+// value (scores, clocks, stat lines, projections, win%) is patched into
+// place afterwards without rebuilding the DOM, so a mid-swipe update never
+// stutters the carousel.
+function playerBlock(p, side){
+  playerRegistry[p.id] = p;
   const nameEl = `<button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`;
   const teamEl = `<span class="p-team">${escapeHtml(p.nflTeam || '')}</span>`;
   const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
-  const contextEl = c.contextText
-    ? `<button type="button" class="game-link js-player-card${c.contextLive ? ' live' : ''}" data-player-id="${escapeHtml(p.id)}">${escapeHtml(c.contextText)}</button>`
-    : '';
   return `<div class="p-block ${side}">
     <div class="p-top">${top}</div>
     <div class="p-sub">
-      ${contextEl}
-      ${c.statLine ? `<span>${escapeHtml(c.statLine)}</span>` : ''}
+      <button type="button" class="game-link js-player-card" data-ctx="${escapeHtml(p.id)}" data-player-id="${escapeHtml(p.id)}" hidden></button>
+      <span data-stat="${escapeHtml(p.id)}" hidden></span>
     </div>
   </div>`;
 }
 
-function openPlayerCard(playerId){
-  const entry = playerRegistry[playerId];
-  if(!entry) return;
-  const { player: p, computed: c } = entry;
-  const pos = p.pos || '';
-  const modal = document.getElementById('playerModal');
-  modal.innerHTML = `<div class="pm-backdrop" id="pmBackdrop">
-    <div class="pm-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(p.name)} player card">
-      <button type="button" class="pm-close" id="pmClose" aria-label="Close">&times;</button>
-      <div class="pm-head">
-        <span class="pm-avatar" style="background:${avatarColor(p.name)}">${escapeHtml(initials(p.name))}</span>
-        <div class="pm-id">
-          <div class="pm-name">${escapeHtml(p.name)}</div>
-          <div class="pm-meta">
-            <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
-            <span class="pm-team">${escapeHtml(p.nflTeam || 'FA')}</span>
-          </div>
-        </div>
-        <div class="pm-points">${(c.points || 0).toFixed(1)}<span>PTS</span></div>
-      </div>
-      ${c.contextText ? `<div class="pm-status${c.contextLive ? ' live' : ''}">${escapeHtml(c.contextText)}</div>` : ''}
-      <div class="pm-stats">${c.statLine ? escapeHtml(c.statLine) : 'No stats yet this week.'}</div>
-    </div>
-  </div>`;
-  document.getElementById('pmBackdrop').onclick = (e) => { if(e.target.id === 'pmBackdrop') closePlayerCard(); };
-  document.getElementById('pmClose').onclick = closePlayerCard;
-}
-function closePlayerCard(){
-  document.getElementById('playerModal').innerHTML = '';
-}
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.js-player-card');
-  if(btn) openPlayerCard(btn.dataset.playerId);
-});
-document.addEventListener('keydown', (e) => {
-  if(e.key === 'Escape') closePlayerCard();
-});
-
-function starterRow(homePlayer, awayPlayer, computedByPlayerId){
+function starterRow(homePlayer, awayPlayer){
   const pos = (homePlayer || awayPlayer).pos || '';
-  const hc = homePlayer ? computedByPlayerId[homePlayer.id] : null;
-  const ac = awayPlayer ? computedByPlayerId[awayPlayer.id] : null;
+  const scoreEl = (p) => p
+    ? `<span class="p-score" data-score="${escapeHtml(p.id)}">0.0</span>`
+    : '<span class="p-score">&mdash;</span>';
   return `<div class="starter-row">
-    ${homePlayer ? playerBlock(homePlayer, hc, 'home') : '<div class="p-block home"></div>'}
-    <span class="p-score">${homePlayer ? (hc?.points || 0).toFixed(1) : '—'}</span>
+    ${homePlayer ? playerBlock(homePlayer, 'home') : '<div class="p-block home"></div>'}
+    ${scoreEl(homePlayer)}
     <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
-    <span class="p-score">${awayPlayer ? (ac?.points || 0).toFixed(1) : '—'}</span>
-    ${awayPlayer ? playerBlock(awayPlayer, ac, 'away') : '<div class="p-block away"></div>'}
+    ${scoreEl(awayPlayer)}
+    ${awayPlayer ? playerBlock(awayPlayer, 'away') : '<div class="p-block away"></div>'}
   </div>`;
 }
 
-function teamScore(team, computedByPlayerId){
-  return team.starters.reduce((sum, p) => sum + ((computedByPlayerId[p.id] && computedByPlayerId[p.id].points) || 0), 0);
-}
-
-// Win% here is a simple projected-total ratio (homeProj / (homeProj +
-// awayProj)), not a real statistical model — placeholder until we have a
-// real projections source to compute something more rigorous from (e.g.
-// factoring in this league's actual week-to-week score variance).
-function winProbHtml(m){
-  if(m.projHome == null || m.projAway == null){
-    return `<div class="matchup-winprob pending">Win% needs live projections &mdash; not wired up yet</div>`;
-  }
-  const total = m.projHome + m.projAway;
-  const homePct = total > 0 ? Math.round((m.projHome / total) * 100) : 50;
-  const awayPct = 100 - homePct;
-  return `<div class="matchup-winprob">
-    <span class="wp-pct home">${homePct}%</span>
-    <div class="winprob-bar"><span class="home-fill" style="width:${homePct}%"></span><span class="away-fill" style="width:${awayPct}%"></span></div>
-    <span class="wp-pct away">${awayPct}%</span>
-  </div>`;
-}
-
-function renderMatchup(m, computedByPlayerId){
-  const homeScore = teamScore(m.home, computedByPlayerId);
-  const awayScore = teamScore(m.away, computedByPlayerId);
-  const homeLead = homeScore > awayScore;
-  const awayLead = awayScore > homeScore;
+function renderMatchup(m, i){
   const rowCount = Math.max(m.home.starters.length, m.away.starters.length);
-  const rows = Array.from({ length: rowCount }, (_, i) => starterRow(m.home.starters[i], m.away.starters[i], computedByPlayerId)).join('');
+  const rows = Array.from({ length: rowCount }, (_, r) => starterRow(m.home.starters[r], m.away.starters[r])).join('');
+  const benchCount = Math.max((m.home.bench || []).length, (m.away.bench || []).length);
+  const benchRows = benchCount
+    ? Array.from({ length: benchCount }, (_, r) => starterRow((m.home.bench || [])[r], (m.away.bench || [])[r])).join('')
+    : '';
+  const teamHtml = (side, key) => `
+      <div class="matchup-team ${key}" data-mteam="${i}-${key}">
+        <div class="team-id">
+          <span class="team-avatar" style="background:${avatarColor(side.team)}">${escapeHtml(initials(side.team))}</span>
+          <span class="name">${escapeHtml(side.team)}</span>
+        </div>
+        <span class="score" data-tscore="${i}-${key}">0.0</span>
+        <span class="proj" data-tproj="${i}-${key}"></span>
+        <div class="team-ytp" data-ytp="${i}-${key}"></div>
+      </div>`;
   return `<div class="matchup-slide"><div class="matchup-card">
     <div class="matchup-score-row">
-      <div class="matchup-team home${homeLead ? ' leading' : ''}">
-        <div class="team-id">
-          <span class="team-avatar" style="background:${avatarColor(m.home.team)}">${escapeHtml(initials(m.home.team))}</span>
-          <span class="name">${escapeHtml(m.home.team)}</span>
-        </div>
-        <span class="score">${homeScore.toFixed(1)}</span>
-        ${m.projHome != null ? `<span class="proj">Proj ${m.projHome.toFixed(1)}</span>` : ''}
-      </div>
+      ${teamHtml(m.home, 'home')}
       <span class="matchup-vs">VS</span>
-      <div class="matchup-team away${awayLead ? ' leading' : ''}">
-        <div class="team-id">
-          <span class="team-avatar" style="background:${avatarColor(m.away.team)}">${escapeHtml(initials(m.away.team))}</span>
-          <span class="name">${escapeHtml(m.away.team)}</span>
-        </div>
-        <span class="score">${awayScore.toFixed(1)}</span>
-        ${m.projAway != null ? `<span class="proj">Proj ${m.projAway.toFixed(1)}</span>` : ''}
-      </div>
+      ${teamHtml(m.away, 'away')}
     </div>
-    ${winProbHtml(m)}
+    <div data-wp="${i}"></div>
     <div class="starters-table">${rows || '<div class="starter-row">No starters yet</div>'}</div>
+    ${benchRows ? `<button type="button" class="bench-toggle" data-benchtoggle="${i}">Bench &darr;</button>
+    <div class="bench-rows" data-bench="${i}" hidden>${benchRows}</div>` : ''}
   </div></div>`;
 }
 
-function renderLeagueStrip(matchups, computedByPlayerId){
+function renderLeagueStrip(matchups){
   const strip = document.getElementById('leagueStrip');
   if(!matchups.length){ strip.innerHTML = ''; return; }
-  strip.innerHTML = `<div class="league-strip">${matchups.map((m, i) => {
-    const homeScore = teamScore(m.home, computedByPlayerId);
-    const awayScore = teamScore(m.away, computedByPlayerId);
-    return `<button class="strip-pill${i === slideIndex ? ' active' : ''}" data-i="${i}">
+  strip.innerHTML = `<div class="league-strip">${matchups.map((m, i) => `
+    <button class="strip-pill${i === slideIndex ? ' active' : ''}" data-i="${i}">
       <span class="strip-avatar" style="background:${avatarColor(m.home.team)}">${escapeHtml(initials(m.home.team))}</span>
-      <span class="strip-score${homeScore > awayScore ? ' lead' : ''}">${homeScore.toFixed(1)}</span>
+      <span class="strip-score" data-strip="${i}-home">0.0</span>
       <span class="strip-vs">&middot;</span>
-      <span class="strip-score${awayScore > homeScore ? ' lead' : ''}">${awayScore.toFixed(1)}</span>
+      <span class="strip-score" data-strip="${i}-away">0.0</span>
       <span class="strip-avatar" style="background:${avatarColor(m.away.team)}">${escapeHtml(initials(m.away.team))}</span>
-    </button>`;
-  }).join('')}</div>`;
+    </button>`).join('')}</div>`;
   strip.querySelectorAll('.strip-pill').forEach((btn) => {
     btn.onclick = () => scrollToSlide(Number(btn.dataset.i));
   });
@@ -1168,7 +1319,7 @@ function renderWeekNav(data){
   document.getElementById('weekSelect').onchange = (e) => loadWeek(Number(e.target.value));
 }
 
-function renderCarousel(matchups, computedByPlayerId){
+function renderCarousel(matchups){
   const contentEl = document.getElementById('content');
   if(!matchups.length){
     contentEl.innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
@@ -1177,7 +1328,7 @@ function renderCarousel(matchups, computedByPlayerId){
   const dots = matchups.map((_, i) => `<button class="dotbtn${i === slideIndex ? ' active' : ''}" data-i="${i}"></button>`).join('');
   contentEl.innerHTML = `<div class="carousel-wrap">
     <button class="carousel-arrow prev" id="arrowPrev">&lsaquo;</button>
-    <div class="carousel" id="carousel">${matchups.map((m) => renderMatchup(m, computedByPlayerId)).join('')}</div>
+    <div class="carousel" id="carousel">${matchups.map((m, i) => renderMatchup(m, i)).join('')}</div>
     <button class="carousel-arrow next" id="arrowNext">&rsaquo;</button>
   </div>
   ${matchups.length > 1 ? `<div class="carousel-dots">${dots}</div>` : ''}`;
@@ -1188,6 +1339,14 @@ function renderCarousel(matchups, computedByPlayerId){
   document.getElementById('arrowNext').onclick = () => scrollToSlide(slideIndex + 1);
   document.querySelectorAll('.dotbtn').forEach((btn) => {
     btn.onclick = () => scrollToSlide(Number(btn.dataset.i));
+  });
+  contentEl.querySelectorAll('.bench-toggle').forEach((btn) => {
+    btn.onclick = () => {
+      const rowsEl = contentEl.querySelector(`[data-bench="${btn.dataset.benchtoggle}"]`);
+      if(!rowsEl) return;
+      rowsEl.hidden = !rowsEl.hidden;
+      btn.innerHTML = rowsEl.hidden ? 'Bench &darr;' : 'Bench &uarr;';
+    };
   });
   let scrollTimer;
   carouselEl.onscroll = () => {
@@ -1209,39 +1368,357 @@ function renderCarousel(matchups, computedByPlayerId){
   scrollToSlide(Math.min(slideIndex, matchups.length - 1));
 }
 
+function buildRosterIndex(matchups){
+  rosterIndex = allPlayersIn(matchups).map((p) => {
+    const norm = normalizeName(p.name);
+    return { pid: p.id, name: p.name, owner: p.owner, norm };
+  });
+}
+
+function renderStructure(){
+  playerRegistry = {};
+  firstPatchDone = false;
+  const matchups = (lineup && lineup.matchups) || [];
+  buildRosterIndex(matchups);
+  renderLeagueStrip(matchups);
+  renderCarousel(matchups);
+  renderTickerFull(0);
+}
+
+/* ---------- In-place patching (every data refresh) ---------- */
+function setLiveText(el, text, flash){
+  if(!el) return;
+  if(el.textContent !== text){
+    el.textContent = text;
+    if(flash && firstPatchDone){
+      el.classList.remove('flash');
+      void el.offsetWidth; // restart the animation
+      el.classList.add('flash');
+    }
+  }
+}
+
+function ytpHtml(t){
+  const parts = [];
+  if(t.live) parts.push(`<span class="live">${t.live} live</span>`);
+  if(t.pre) parts.push(`${t.pre} to play`);
+  if(t.done) parts.push(`${t.done} done`);
+  return parts.join(' &middot; ');
+}
+
+function winProbHtml(h, a){
+  if(!lineup || !lineup.projections){
+    return `<div class="matchup-winprob pending">Win% needs projections &mdash; waiting on MFL data</div>`;
+  }
+  const homePct = matchupWinProb(h, a);
+  const awayPct = 100 - homePct;
+  return `<div class="matchup-winprob">
+    <span class="wp-pct home">${homePct}%</span>
+    <div class="winprob-bar"><span class="home-fill" style="width:${homePct}%"></span><span class="away-fill" style="width:${awayPct}%"></span></div>
+    <span class="wp-pct away">${awayPct}%</span>
+  </div>`;
+}
+
+function patchDynamic(){
+  if(!lineup) return;
+  const matchups = lineup.matchups || [];
+  const hasProj = !!lineup.projections;
+
+  for(const p of allPlayersIn(matchups)){
+    const c = computed[p.id] || {};
+    setLiveText(document.querySelector(`[data-score="${p.id}"]`), ((c.points || 0)).toFixed(1), true);
+    const ctxEl = document.querySelector(`[data-ctx="${p.id}"]`);
+    if(ctxEl){
+      const txt = c.contextText || '';
+      ctxEl.hidden = !txt;
+      if(ctxEl.textContent !== txt) ctxEl.textContent = txt;
+      ctxEl.classList.toggle('live', !!c.contextLive);
+    }
+    const statEl = document.querySelector(`[data-stat="${p.id}"]`);
+    if(statEl){
+      const txt = c.statLine || '';
+      statEl.hidden = !txt;
+      if(statEl.textContent !== txt) statEl.textContent = txt;
+    }
+  }
+
+  matchups.forEach((m, i) => {
+    const h = teamLiveTotals(m.home);
+    const a = teamLiveTotals(m.away);
+    setLiveText(document.querySelector(`[data-tscore="${i}-home"]`), h.points.toFixed(1), true);
+    setLiveText(document.querySelector(`[data-tscore="${i}-away"]`), a.points.toFixed(1), true);
+    setLiveText(document.querySelector(`[data-strip="${i}-home"]`), h.points.toFixed(1), true);
+    setLiveText(document.querySelector(`[data-strip="${i}-away"]`), a.points.toFixed(1), true);
+    const homeTeamEl = document.querySelector(`[data-mteam="${i}-home"]`);
+    const awayTeamEl = document.querySelector(`[data-mteam="${i}-away"]`);
+    if(homeTeamEl) homeTeamEl.classList.toggle('leading', h.points > a.points);
+    if(awayTeamEl) awayTeamEl.classList.toggle('leading', a.points > h.points);
+    const stripHome = document.querySelector(`[data-strip="${i}-home"]`);
+    const stripAway = document.querySelector(`[data-strip="${i}-away"]`);
+    if(stripHome) stripHome.classList.toggle('lead', h.points > a.points);
+    if(stripAway) stripAway.classList.toggle('lead', a.points > h.points);
+    const projHome = document.querySelector(`[data-tproj="${i}-home"]`);
+    const projAway = document.querySelector(`[data-tproj="${i}-away"]`);
+    if(projHome) projHome.textContent = hasProj ? `Proj ${h.proj.toFixed(1)}` : '';
+    if(projAway) projAway.textContent = hasProj ? `Proj ${a.proj.toFixed(1)}` : '';
+    const ytpHome = document.querySelector(`[data-ytp="${i}-home"]`);
+    const ytpAway = document.querySelector(`[data-ytp="${i}-away"]`);
+    if(ytpHome) ytpHome.innerHTML = ytpHtml(h);
+    if(ytpAway) ytpAway.innerHTML = ytpHtml(a);
+    const wpEl = document.querySelector(`[data-wp="${i}"]`);
+    if(wpEl) wpEl.innerHTML = winProbHtml(h, a);
+  });
+
+  updateLastUpdated();
+  if(openPid) refreshOpenCard();
+  firstPatchDone = true;
+}
+
+/* ---------- Player card (in-app popup; the only links out go to MFL) ---------- */
+function playerCardHtml(p, c){
+  const pos = p.pos || '';
+  const g = c.game;
+  let drive = '';
+  if(g && g.state === 'in'){
+    const clockStr = 'Q' + (g.quarter ?? '?') + ' ' + (g.clock ?? '');
+    const dd = g.shortDownDistance ? ' &middot; ' + escapeHtml(g.shortDownDistance) : '';
+    const leftLabel = g.homeAway === 'home' ? (g.opponent || '') : (g.selfAbbr || '');
+    const rightLabel = g.homeAway === 'home' ? (g.selfAbbr || '') : (g.opponent || '');
+    const ballLine = [
+      g.possessionText ? 'Ball on ' + g.possessionText : '',
+      g.lastPlayText || '',
+    ].filter(Boolean).join(' &mdash; ');
+    drive = `<div class="pm-drive">
+      <div class="pm-drive-dd">
+        <span>${escapeHtml(g.selfAbbr || p.nflTeam || '')} ${g.teamScore ?? 0} &ndash; ${g.oppScore ?? 0} ${escapeHtml(g.opponent || '')}</span>
+        <span class="${g.redZone ? 'rz' : ''}">${g.redZone ? '&#9679; ' : ''}${escapeHtml(clockStr)}${dd}</span>
+      </div>
+      ${g.yardLine != null ? `<div class="pm-field"><span class="ball-marker" style="left:${Math.max(0, Math.min(100, g.yardLine))}%"></span></div>
+      <div class="pm-field-labels"><span>${escapeHtml(leftLabel)}</span><span>${escapeHtml(rightLabel)}</span></div>` : ''}
+      ${ballLine ? `<div class="pm-lastplay">${escapeHtml(ballLine.replace(/&mdash;/g, '—')).replace(/—/g, '&mdash;')}</div>` : ''}
+    </div>`;
+  }
+  return `
+      <button type="button" class="pm-close" id="pmClose" aria-label="Close">&times;</button>
+      <div class="pm-head">
+        <span class="pm-avatar" style="background:${avatarColor(p.name)}">${escapeHtml(initials(p.name))}</span>
+        <div class="pm-id">
+          <div class="pm-name">${escapeHtml(p.name)}</div>
+          <div class="pm-meta">
+            <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
+            <span class="pm-team">${escapeHtml(p.nflTeam || 'FA')}</span>
+          </div>
+        </div>
+        <div class="pm-points">${(c.points || 0).toFixed(1)}<span>PTS</span></div>
+      </div>
+      ${c.contextText ? `<div class="pm-status${c.contextLive ? ' live' : ''}">${escapeHtml(c.contextText)}</div>` : ''}
+      <div class="pm-stats">${c.statLine ? escapeHtml(c.statLine) : 'No stats yet this week.'}</div>
+      ${drive}
+      <a class="pm-mfl" href="${MFL_LINEUP_URL}" target="_blank" rel="noopener">Manage lineup on MFL &nearr;</a>`;
+}
+
+function openPlayerCard(pid){
+  const p = playerRegistry[pid];
+  if(!p) return;
+  openPid = pid;
+  const modal = document.getElementById('playerModal');
+  modal.innerHTML = `<div class="pm-backdrop" id="pmBackdrop">
+    <div class="pm-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(p.name)} player card">${playerCardHtml(p, computed[pid] || {})}</div>
+  </div>`;
+  document.getElementById('pmBackdrop').onclick = (e) => { if(e.target.id === 'pmBackdrop') closePlayerCard(); };
+  document.getElementById('pmClose').onclick = closePlayerCard;
+}
+// Re-render just the card contents on each patch so an open card's points,
+// drive info, and stat line move in real time too.
+function refreshOpenCard(){
+  const p = playerRegistry[openPid];
+  const card = document.querySelector('#playerModal .pm-card');
+  if(!p || !card){ openPid = null; return; }
+  card.innerHTML = playerCardHtml(p, computed[openPid] || {});
+  document.getElementById('pmClose').onclick = closePlayerCard;
+}
+function closePlayerCard(){
+  openPid = null;
+  document.getElementById('playerModal').innerHTML = '';
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-player-card');
+  if(btn) openPlayerCard(btn.dataset.playerId);
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closePlayerCard();
+});
+
+/* ---------- League feed (scoring plays involving rostered players) ---------- */
+function renderTickerFull(newCount){
+  const el = document.getElementById('ticker');
+  if(!tickerEvents.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="ticker">
+    <button type="button" class="ticker-head" id="tickerHead"><span class="tk-dot"></span>LEAGUE FEED<span class="tk-count">${tickerEvents.length}</span></button>
+    <div class="ticker-list" id="tickerList"${tickerOpen ? '' : ' hidden'}>${tickerEvents.map((ev, idx) => `
+      <div class="ticker-item${idx < newCount ? ' new' : ''}">
+        <span class="tk-time">${escapeHtml(ev.when)}</span>
+        <span class="tk-text">${ev.who.map((w) => `<span class="tk-who">${escapeHtml(w.name)}</span> <span class="tk-owner">${escapeHtml(w.owner)}</span>`).join(', ')} &mdash; ${escapeHtml(ev.text)}</span>
+      </div>`).join('')}</div>
+  </div>`;
+  document.getElementById('tickerHead').onclick = () => {
+    tickerOpen = !tickerOpen;
+    document.getElementById('tickerList').hidden = !tickerOpen;
+  };
+}
+
+function pushTickerEvents(events, animate){
+  if(!events.length) return;
+  tickerEvents = [...events, ...tickerEvents].slice(0, 40);
+  renderTickerFull(animate ? events.length : 0);
+}
+
+// Pull new scoring plays out of a game summary and keep only the ones that
+// name a rostered player (starter or bench, any team in the league).
+function harvestScoringPlays(summary){
+  const fresh = [];
+  for(const play of summary.scoringPlays || []){
+    const key = String(play.id || ((play.text || '') + ':' + (play.period && play.period.number)));
+    if(seenPlays.has(key)) continue;
+    seenPlays.add(key);
+    const ntext = ' ' + normalizeName(play.text || '') + ' ';
+    const who = [];
+    for(const r of rosterIndex){
+      if(r.norm && ntext.includes(' ' + r.norm + ' ') && !who.some((w) => w.name === r.name)){
+        who.push({ name: r.name, owner: r.owner });
+      }
+    }
+    if(!who.length) continue;
+    fresh.push({
+      when: `Q${(play.period && play.period.number) ?? '?'} ${(play.clock && play.clock.displayValue) || ''}`,
+      text: ((play.team && play.team.abbreviation) ? play.team.abbreviation + ': ' : '') + (play.text || (play.type && play.type.text) || 'Score'),
+      who: who.slice(0, 3),
+    });
+  }
+  return fresh;
+}
+
+/* ---------- Banner ---------- */
 function renderBanner(data){
   const bannerEl = document.getElementById('banner');
   if(data.status === 'unavailable' || data.status === 'not_started'){
     bannerEl.innerHTML = `<div class="banner info">${escapeHtml(data.message || "Live scoring isn't available until the season starts.")}</div>`;
   } else {
-    const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    bannerEl.innerHTML = `<div class="banner"><span><span class="dot"></span>Live &mdash; Week ${escapeHtml(data.week)}</span><span class="refresh-note">Updated ${now}</span></div>`;
+    bannerEl.innerHTML = `<div class="banner"><span><span class="dot"></span>Live &mdash; Week ${escapeHtml(data.week)}</span><span class="refresh-note">Updated <span id="lastUpdate">&mdash;</span></span></div>`;
+    updateLastUpdated();
+  }
+}
+function updateLastUpdated(){
+  const el = document.getElementById('lastUpdate');
+  if(el) el.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+// A stalled feed must never look like a quiet afternoon. Every successful
+// ESPN pull stamps the clock; once we're two cadences past the last one, the
+// banner says so instead of showing a frozen score as if it were current.
+let lastEspnOk = 0;
+let espnFailStreak = 0;
+function markFeedHealth(ok){
+  if(ok){ lastEspnOk = Date.now(); espnFailStreak = 0; }
+  else espnFailStreak++;
+  const dot = document.querySelector('#banner .dot');
+  const note = document.querySelector('#banner .refresh-note');
+  if(!dot || !note) return;
+  const stale = espnFailStreak >= 2 || (lastEspnOk && Date.now() - lastEspnOk > 90000);
+  const stamp = new Date(lastEspnOk || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  dot.classList.toggle('stale', stale);
+  // Rewritten on every transition in both directions — a recovered feed that
+  // still reads "stalled" is exactly the lie this indicator exists to prevent.
+  const html = stale
+    ? `Feed stalled &mdash; retrying (last <span id="lastUpdate">${stamp}</span>)`
+    : `Updated <span id="lastUpdate">${stamp}</span>`;
+  if(note.dataset.state !== String(stale)){ note.innerHTML = html; note.dataset.state = String(stale); }
+}
+
+/* ---------- Orchestration: split-cadence polling engine ----------
+   One master clock ticks every 2.5s and fires whichever fetches are due.
+   The ESPN scoreboard runs hottest (10s while any NFL game is live) since
+   one cheap request moves every score, clock, and drive situation on the
+   page; box scores (one per live game) run at half that; MFL lineup data
+   ambles at 2 minutes. Hidden tab = everything pauses; regaining focus
+   forces an immediate full refresh. */
+const sched = { lineup: 0, scoreboard: 0, box: 0 };
+const inflight = { lineup: false, scoreboard: false, box: false };
+
+function anyLive(){
+  return Object.values(espnCache.gamesByTeam || {}).some((g) => g.state === 'in');
+}
+
+function recomputeAll(){
+  if(!lineup) return;
+  for(const p of allPlayersIn(lineup.matchups)){
+    computed[p.id] = computePoints(p, espnCache.gamesByTeam, lineup.rules);
   }
 }
 
-/* ---------- Orchestration ---------- */
-async function loadEspnAndRender(data){
-  const computedByPlayerId = {};
-  const allPlayers = data.matchups.flatMap((m) => [...m.home.starters, ...m.away.starters]);
-
+async function refreshLineup(weekOverride){
+  if(inflight.lineup) return;
+  inflight.lineup = true;
   try{
-    // Scoreboard is cheap (one call for the whole week) and drives game
-    // clock/redzone, so it's refetched every poll regardless of week.
-    if(espnCache.week !== data.week) espnCache = { week: data.week, gamesByTeam: {}, boxByEvent: {} };
-    espnCache.gamesByTeam = await loadEspnScoreboard(data.week, data.season);
-
-    const neededEventIds = new Set();
-    for(const p of allPlayers){
-      const abbr = p.nflTeam ? (MFL_TO_ESPN_TEAM[p.nflTeam] || p.nflTeam) : null;
-      const game = abbr ? espnCache.gamesByTeam[abbr] : null;
-      if(game && game.eventId) neededEventIds.add(game.eventId);
+    const w = weekOverride != null ? weekOverride : (currentWeek ?? '');
+    const res = await fetch(`${LIVE_API_URL}?week=${w}`);
+    const data = await res.json();
+    lineup = data;
+    currentWeek = data.week;
+    renderBanner(data);
+    renderWeekNav(data);
+    const key = JSON.stringify([data.week, (data.matchups || []).map((m) => [
+      m.home.franchiseId, (m.home.starters || []).map((p) => p.id), (m.home.bench || []).map((p) => p.id),
+      m.away.franchiseId, (m.away.starters || []).map((p) => p.id), (m.away.bench || []).map((p) => p.id),
+    ])]);
+    if(key !== structuralKey){
+      structuralKey = key;
+      renderStructure();
     }
+    patchDynamic();
+  } catch(e){
+    console.error('lineup fetch failed', e);
+    if(!lineup){
+      document.getElementById('banner').innerHTML = `<div class="banner"><span><span class="dot stale"></span>Couldn't reach the live scoreboard. Retrying&hellip;</span></div>`;
+      sched.lineup = Date.now() + 10000; // retry sooner than the normal cadence
+    }
+  } finally {
+    inflight.lineup = false;
+  }
+}
 
-    // Box scores are heavier, so only (re)fetch a game that's still live —
-    // final/pregame games don't need re-pulling every poll.
-    await Promise.all([...neededEventIds].map(async (eventId) => {
+async function refreshScoreboard(){
+  if(!lineup || demoMode || inflight.scoreboard) return;
+  inflight.scoreboard = true;
+  try{
+    if(espnCache.week !== lineup.week) espnCache = { week: lineup.week, gamesByTeam: {}, boxByEvent: {} };
+    espnCache.gamesByTeam = await loadEspnScoreboard(lineup.week, lineup.season);
+    markFeedHealth(true);
+    recomputeAll();
+    patchDynamic();
+    if(!Object.keys(espnCache.boxByEvent).length) sched.box = 0; // first sight of games: pull boxes now
+  } catch(e){
+    console.error('ESPN scoreboard failed', e);
+    markFeedHealth(false);
+  } finally {
+    inflight.scoreboard = false;
+  }
+}
+
+async function refreshBoxScores(){
+  if(!lineup || demoMode || inflight.box) return;
+  inflight.box = true;
+  try{
+    const needed = new Set();
+    for(const p of allPlayersIn(lineup.matchups)){
+      const abbr = p.nflTeam ? (MFL_TO_ESPN_TEAM[p.nflTeam] || p.nflTeam) : null;
+      const g = abbr ? espnCache.gamesByTeam[abbr] : null;
+      if(g && g.eventId && g.state !== 'pre') needed.add(g.eventId);
+    }
+    const freshEvents = [];
+    await Promise.all([...needed].map(async (eventId) => {
       const existing = espnCache.boxByEvent[eventId];
-      if(existing && existing.final) return;
+      if(existing && existing.final) return; // finals never change; fetched once
       try{
         const summary = await espnJson(`${ESPN_SUMMARY}?event=${eventId}`);
         const final = !!(summary.header?.competitions?.[0]?.status?.type?.completed);
@@ -1251,54 +1728,62 @@ async function loadEspnAndRender(data){
           playerIndex: buildPlayerIndex(summary),
           fieldGoals: extractFieldGoalPlays(summary),
         };
+        freshEvents.push(...harvestScoringPlays(summary));
       } catch(e){
         console.error('ESPN box score failed for event', eventId, e);
       }
     }));
-  } catch(e){
-    console.error('ESPN scoreboard failed', e);
-  }
-
-  for(const p of allPlayers){
-    computedByPlayerId[p.id] = computePoints(p, espnCache.gamesByTeam, data.rules);
-  }
-
-  renderLeagueStrip(data.matchups, computedByPlayerId);
-  renderCarousel(data.matchups, computedByPlayerId);
-}
-
-async function loadWeek(week){
-  slideIndex = 0;
-  const bannerEl = document.getElementById('banner');
-  const loadingLabel = week ? `Loading week ${escapeHtml(week)}` : 'Loading';
-  bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>${loadingLabel}&hellip;</span></div>`;
-  try{
-    const res = await fetch(`${LIVE_API_URL}?week=${week}`);
-    const data = await res.json();
-    currentData = data;
-    currentWeek = data.week;
-    renderBanner(data);
-    renderWeekNav(data);
-    if(data.matchups && data.matchups.length){
-      await loadEspnAndRender(data);
-    } else {
-      document.getElementById('content').innerHTML = `<div class="empty"><h2>No matchups to show yet</h2><p>Check back once the week's games are set.</p></div>`;
+    recomputeAll();
+    patchDynamic();
+    if(freshEvents.length){
+      freshEvents.reverse(); // latest play first
+      pushTickerEvents(freshEvents, tickerPrimed);
     }
-  } catch(e){
-    bannerEl.innerHTML = `<div class="banner"><span><span class="dot stale"></span>Couldn't reach the live scoreboard. Retrying&hellip;</span></div>`;
+    tickerPrimed = true;
+  } finally {
+    inflight.box = false;
   }
 }
 
-async function poll(){
-  if(currentWeek == null){ await loadWeek(''); return; } // '' lets the API pick the current week
-  await loadWeek(currentWeek);
+function tick(){
+  if(demoMode || document.hidden) return;
+  const now = Date.now();
+  const live = anyLive();
+  if(now >= sched.lineup){ sched.lineup = now + CADENCE.lineup; refreshLineup(); }
+  if(lineup && now >= sched.scoreboard){ sched.scoreboard = now + (live ? CADENCE.sbLive : CADENCE.sbIdle); refreshScoreboard(); }
+  if(lineup && now >= sched.box){ sched.box = now + (live ? CADENCE.boxLive : CADENCE.boxIdle); refreshBoxScores(); }
 }
 
+function loadWeek(week){
+  slideIndex = 0;
+  espnCache = { week: null, gamesByTeam: {}, boxByEvent: {} };
+  computed = {};
+  tickerEvents = [];
+  seenPlays.clear();
+  tickerPrimed = false;
+  document.getElementById('banner').innerHTML = `<div class="banner"><span><span class="dot stale"></span>Loading week ${escapeHtml(week)}&hellip;</span></div>`;
+  sched.lineup = Date.now() + CADENCE.lineup;
+  sched.scoreboard = 0;
+  sched.box = 0;
+  refreshLineup(week).then(() => tick());
+}
+
+/* ---------- Boot ---------- */
 if(new URLSearchParams(location.search).get('demo') === '1'){
+  demoMode = true;
   renderDemo();
 } else {
-  poll();
-  setInterval(poll, POLL_MS);
+  document.getElementById('banner').innerHTML = `<div class="banner"><span><span class="dot stale"></span>Loading&hellip;</span></div>`;
+  sched.lineup = Date.now() + CADENCE.lineup;
+  refreshLineup().then(() => tick());
+  setInterval(tick, 2500);
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden){
+      sched.scoreboard = 0;
+      sched.box = 0;
+      tick();
+    }
+  });
 }
 </script>
 </body>

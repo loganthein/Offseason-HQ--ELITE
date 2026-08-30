@@ -182,17 +182,36 @@ function assertSelectOnly(sql) {
   return /\blimit\b/i.test(trimmed) ? trimmed : `${trimmed} LIMIT 200`;
 }
 
+// Best-effort in-memory cache (per Worker isolate, so it survives across
+// requests on a warm instance and silently starts cold on a new one). Keyed
+// by the full request, storing the in-flight promise so concurrent pollers
+// share one MFL fetch instead of stampeding. TTLs: things that change
+// mid-game get seconds, things that change rarely get minutes.
+const MFL_CACHE_TTLS = { liveScoring: 20, projectedScores: 300, players: 600, league: 1800, rules: 1800, schedule: 1800 };
+const mflCache = new Map();
+
 async function mflFetch(type, params = "") {
   const url = `https://${MFL_HOST}/${MFL_SEASON}/export?TYPE=${type}&L=${MFL_LEAGUE_ID}&JSON=1${params}`;
-  const res = await fetch(url);
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(
-      `MFL didn't return usable data for ${type} — the league's site may not be set to allow public (logged-out) viewing. Check MFL League Settings > Website for a "non-owner/public viewing" option.`
-    );
+  const ttl = (MFL_CACHE_TTLS[type] || 0) * 1000;
+  const cached = mflCache.get(url);
+  if (cached && cached.expires > Date.now()) return cached.promise;
+
+  const promise = (async () => {
+    const res = await fetch(url);
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(
+        `MFL didn't return usable data for ${type} — the league's site may not be set to allow public (logged-out) viewing. Check MFL League Settings > Website for a "non-owner/public viewing" option.`
+      );
+    }
+  })();
+  if (ttl > 0) {
+    mflCache.set(url, { promise, expires: Date.now() + ttl });
+    promise.catch(() => mflCache.delete(url)); // never cache a failure
   }
+  return promise;
 }
 
 // MFL returns player names as "Lastname, Firstname" (e.g. "Walker III,
@@ -433,25 +452,44 @@ async function handleLiveScores(request, env) {
 
   const allPlayerIds = [...new Set(Object.values(playersById).flat().map((p) => p.id))];
   const playerInfo = {};
+  let projections = null;
   if (allPlayerIds.length) {
-    const playersRes = await mflFetch("players", `&PLAYERS=${allPlayerIds.join(",")}`);
+    // Projections come from MFL's projectedScores export (per player, per
+    // week). Best-effort: if the export errors or comes back in a shape we
+    // don't recognize, ship projections:null and the frontend keeps its
+    // explicit "projections unavailable" state instead of fake numbers.
+    const [playersRes, projRes] = await Promise.all([
+      mflFetch("players", `&PLAYERS=${allPlayerIds.join(",")}`),
+      mflFetch("projectedScores", `&W=${week}&PLAYERS=${allPlayerIds.join(",")}`).catch(() => null),
+    ]);
     for (const p of playersRes.players?.player || []) {
       playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, nflTeam: p.team || null };
+    }
+    const projRaw = projRes?.projectedScores?.playerScore;
+    const projArr = Array.isArray(projRaw) ? projRaw : projRaw ? [projRaw] : [];
+    for (const ps of projArr) {
+      const score = Number(ps?.score);
+      if (ps?.id && Number.isFinite(score)) (projections ||= {})[ps.id] = score;
     }
   }
 
   function buildTeam(franchiseId) {
-    const starters = (playersById[franchiseId] || []).map((p) => {
+    const toEntry = (p) => {
       const info = playerInfo[p.id] || {};
       return {
         id: p.id,
         name: info.name || `Player ${p.id}`,
         pos: info.pos || null,
         nflTeam: info.nflTeam || null,
-        mflStatus: p.status || null, // unconfirmed field meaning, kept for reference only
       };
-    });
-    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, starters };
+    };
+    // MFL's liveScoring players carry status "starter"/"nonstarter". Only an
+    // explicit "nonstarter" goes to the bench: an absent/unknown status stays
+    // in the lineup, so a surprise shape can't blank the whole board.
+    const all = playersById[franchiseId] || [];
+    const starters = all.filter((p) => p.status !== "nonstarter").map(toEntry);
+    const bench = all.filter((p) => p.status === "nonstarter").map(toEntry);
+    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, starters, bench };
   }
 
   const matchups = extractMatchupsForWeek(fullSchedule, week)
@@ -466,7 +504,7 @@ async function handleLiveScores(request, env) {
 
   const body = debug
     ? { week, totalWeeks, liveUnavailable, rules, raw: { league, rulesData, fullSchedule, live } }
-    : { status: liveUnavailable ? "not_started" : "live", week: Number(week), totalWeeks, season: MFL_SEASON, rules, matchups };
+    : { status: liveUnavailable ? "not_started" : "live", week: Number(week), totalWeeks, season: MFL_SEASON, rules, matchups, projections };
 
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
