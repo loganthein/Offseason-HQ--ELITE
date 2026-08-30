@@ -325,7 +325,10 @@ async function handleSlackEvents(request, env, ctx) {
   }
 
   const verified = await verifySlackSignature(request, rawBody, env.SLACK_SIGNING_SECRET);
-  if (!verified) return new Response("Invalid signature", { status: 401 });
+  if (!verified) {
+    console.error("Slack signature verification failed — check SLACK_SIGNING_SECRET");
+    return new Response("Invalid signature", { status: 401 });
+  }
 
   if (body.type === "event_callback") {
     // Slack retries delivery if it doesn't get a fast 200 (or on any hiccup);
@@ -333,6 +336,7 @@ async function handleSlackEvents(request, env, ctx) {
     if (request.headers.get("X-Slack-Retry-Num")) return new Response("");
 
     const event = body.event;
+    console.log("Slack event:", event?.type, event?.bot_id ? "(from bot, ignoring)" : "");
     if (event?.type === "app_mention" && !event.bot_id) {
       ctx.waitUntil(handleMention(env, event));
     }
