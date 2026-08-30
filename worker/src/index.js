@@ -316,7 +316,18 @@ async function handleLiveScores(request, env) {
     fetchEspnScoreboard(),
   ]);
 
+  // MFL returns a normal 200 with an {error} body (not an HTTP error) when
+  // live scoring isn't available yet (preseason, or between weeks).
+  const liveUnavailable = !!live?.error;
   const week = live?.liveScoring?.week || weekParam || null;
+
+  if (!week && !debug) {
+    return new Response(
+      JSON.stringify({ status: "unavailable", message: live?.error?.$t || "Live scoring isn't available right now.", week: null, matchups: [] }),
+      { headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) } }
+    );
+  }
+
   const schedule = week ? await mflFetch("schedule", `&W=${week}`) : { schedule: {} };
 
   const franchiseNames = {};
@@ -371,7 +382,9 @@ async function handleLiveScores(request, env) {
     })
     .filter(Boolean);
 
-  const body = debug ? { week, raw: { league, live, schedule, espn } } : { week, matchups };
+  const body = debug
+    ? { week, liveUnavailable, raw: { league, live, schedule, espn } }
+    : { status: liveUnavailable ? "not_started" : "live", week, matchups };
 
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
