@@ -167,7 +167,7 @@ function corsHeaders(env, request) {
   const match = allowed.includes("*") ? "*" : allowed.includes(origin) ? origin : allowed[0];
   return {
     "Access-Control-Allow-Origin": match,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
 }
@@ -244,6 +244,138 @@ async function queryMflLive({ type, week }) {
   }
 
   return { franchiseNames, playerNames, data };
+}
+
+// --- Live scoreboard (elitefantasyhq.com/live/) ---
+// Merges MFL's live per-player fantasy scoring with real NFL game state from
+// ESPN's public (unofficial, undocumented, keyless) scoreboard endpoint.
+// MFL's schedule/liveScoring field names below are our best-effort read of
+// how MFL's export API generally shapes these — unlike rosters/draftResults
+// earlier, we don't have a real sample committed in this repo to check
+// against, so this may need a field-name fix once we see live output. Use
+// ?debug=1 to get the raw fetched data back instead of the merged view.
+
+const MFL_TO_ESPN_TEAM = { ARZ: "ARI", BLT: "BAL", CLV: "CLE", HST: "HOU", JAC: "JAX", LVR: "LV", WAS: "WSH" };
+
+async function fetchEspnScoreboard() {
+  try {
+    const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard");
+    if (!res.ok) return {};
+    const data = await res.json();
+    const byTeam = {};
+    for (const event of data.events || []) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const status = comp.status || {};
+      const situation = comp.situation || {};
+      const [a, b] = comp.competitors || [];
+      if (!a || !b) continue;
+      const build = (self, opp) => ({
+        opponent: opp.team?.abbreviation ?? null,
+        quarter: status.period ?? null,
+        clock: status.displayClock ?? null,
+        state: status.type?.state ?? null, // "pre" | "in" | "post"
+        final: !!status.type?.completed,
+        redZone: !!situation.isRedZone,
+        teamScore: Number(self.score) || 0,
+        oppScore: Number(opp.score) || 0,
+      });
+      if (a.team?.abbreviation) byTeam[a.team.abbreviation] = build(a, b);
+      if (b.team?.abbreviation) byTeam[b.team.abbreviation] = build(b, a);
+    }
+    return byTeam;
+  } catch (e) {
+    console.error("ESPN scoreboard fetch failed:", e.message);
+    return {}; // live fantasy scores should never break just because this did
+  }
+}
+
+function extractMatchups(scheduleData) {
+  const s = scheduleData?.schedule;
+  if (!s) return [];
+  const weekly = Array.isArray(s.weeklySchedule) ? s.weeklySchedule[0] : s.weeklySchedule;
+  const matchups = weekly?.matchup ?? s.matchup;
+  if (!matchups) return [];
+  return Array.isArray(matchups) ? matchups : [matchups];
+}
+
+function extractLiveFranchises(liveData) {
+  const franchises = liveData?.liveScoring?.franchise;
+  if (!franchises) return [];
+  return Array.isArray(franchises) ? franchises : [franchises];
+}
+
+async function handleLiveScores(request, env) {
+  const url = new URL(request.url);
+  const weekParam = url.searchParams.get("week");
+  const debug = url.searchParams.get("debug") === "1";
+
+  const [league, live, espn] = await Promise.all([
+    mflFetch("league"),
+    mflFetch("liveScoring", weekParam ? `&W=${weekParam}` : ""),
+    fetchEspnScoreboard(),
+  ]);
+
+  const week = live?.liveScoring?.week || weekParam || null;
+  const schedule = week ? await mflFetch("schedule", `&W=${week}`) : { schedule: {} };
+
+  const franchiseNames = {};
+  for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
+
+  const liveFranchises = extractLiveFranchises(live);
+  const scoreById = {};
+  const playersById = {};
+  for (const f of liveFranchises) {
+    scoreById[f.id] = Number(f.score) || 0;
+    const players = f.players?.player;
+    playersById[f.id] = Array.isArray(players) ? players : players ? [players] : [];
+  }
+
+  const allPlayerIds = [...new Set(Object.values(playersById).flat().map((p) => p.id))];
+  const playerInfo = {};
+  if (allPlayerIds.length) {
+    const playersRes = await mflFetch("players", `&PLAYERS=${allPlayerIds.join(",")}`);
+    for (const p of playersRes.players?.player || []) {
+      playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, nflTeam: p.team || null };
+    }
+  }
+
+  function gameContextFor(nflTeam) {
+    if (!nflTeam) return null;
+    return espn[MFL_TO_ESPN_TEAM[nflTeam] || nflTeam] || null;
+  }
+
+  function buildTeam(franchiseId) {
+    const starters = (playersById[franchiseId] || []).map((p) => {
+      const info = playerInfo[p.id] || {};
+      return {
+        id: p.id,
+        name: info.name || `Player ${p.id}`,
+        pos: info.pos || null,
+        points: Number(p.score) || 0,
+        status: p.status || null,
+        nflTeam: info.nflTeam || null,
+        game: gameContextFor(info.nflTeam),
+      };
+    });
+    return { franchiseId, team: franchiseNames[franchiseId] || `Franchise ${franchiseId}`, score: scoreById[franchiseId] || 0, starters };
+  }
+
+  const matchups = extractMatchups(schedule)
+    .map((m) => {
+      const sides = Array.isArray(m.franchise) ? m.franchise : m.franchise ? [m.franchise] : [];
+      if (sides.length < 2) return null;
+      const homeSide = sides.find((f) => f.isHome === "1") || sides[0];
+      const awaySide = sides.find((f) => f !== homeSide) || sides[1];
+      return { home: buildTeam(homeSide.id), away: buildTeam(awaySide.id) };
+    })
+    .filter(Boolean);
+
+  const body = debug ? { week, raw: { league, live, schedule, espn } } : { week, matchups };
+
+  return new Response(JSON.stringify(body), {
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders(env, request) },
+  });
 }
 
 async function callClaude(env, messages, { stream, tools = TOOLS, system = SYSTEM_PROMPT }) {
@@ -506,6 +638,18 @@ export default {
 
     if (url.pathname === "/slack/events" && request.method === "POST") {
       return await handleSlackEvents(request, env, ctx);
+    }
+
+    if (url.pathname === "/api/live-scores" && request.method === "GET") {
+      try {
+        return await handleLiveScores(request, env);
+      } catch (e) {
+        console.error("Live scores error:", e.message);
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500,
+          headers: { "content-type": "application/json", ...corsHeaders(env, request) },
+        });
+      }
     }
 
     return new Response("Not found", { status: 404, headers: corsHeaders(env, request) });
