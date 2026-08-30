@@ -344,7 +344,14 @@ h1{
 /* Starter rows: one row per roster slot, home player/score on the left,
    position pill in the middle, away score/player on the right — mirrors
    both teams' lineups side by side instead of two separate stacked lists. */
-.starters-table{ padding:4px 0; }
+.starters-table{ padding:4px 0; position:relative; }
+.starters-table::before{
+  content:'';
+  position:absolute;
+  left:50%; top:0; bottom:0;
+  width:1px;
+  background:var(--border-soft);
+}
 .starter-row{
   display:grid;
   grid-template-columns:1fr auto auto auto 1fr;
@@ -369,11 +376,13 @@ h1{
   text-overflow:ellipsis;
   max-width:130px;
 }
+a.p-name{ text-decoration:none; }
+a.p-name:hover{ text-decoration:underline; }
 .p-team{ font-family:'DM Mono',monospace; font-size:9.5px; color:var(--ink-faint); flex-shrink:0; }
 .p-sub{ display:flex; flex-direction:column; gap:1px; margin-top:2px; }
 .p-block.home .p-sub{ align-items:flex-end; }
 .p-block.away .p-sub{ align-items:flex-start; }
-.p-sub span{
+.p-sub span, .p-sub a{
   font-family:'DM Mono',monospace;
   font-size:9.5px;
   color:var(--ink-faint);
@@ -381,8 +390,10 @@ h1{
   overflow:hidden;
   text-overflow:ellipsis;
   max-width:170px;
+  text-decoration:none;
 }
-.p-sub .live{ color:var(--red-ink); font-weight:600; }
+.p-sub a:hover{ text-decoration:underline; }
+.p-sub .live, .p-sub a.live{ color:var(--red-ink); font-weight:600; }
 .p-score{
   font-family:'Bebas Neue',sans-serif;
   font-size:19px;
@@ -461,7 +472,11 @@ const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" }
 let demoIdSeq = 0;
 function demoPlayer(name, pos, nflTeam, points, contextText, live, statLine){
   demoIdSeq += 1;
-  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '' };
+  // These are real players/teams, so the "player" link goes to a real ESPN
+  // search result even though the fake matchup/game itself obviously isn't.
+  const playerHref = pos === 'D' ? espnTeamUrl(nflTeam) : espnPlayerUrl(null, name);
+  const gameHref = 'https://www.espn.com/nfl/scoreboard';
+  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '', playerHref, gameHref };
 }
 const DEMO_MATCHUPS = [
   {
@@ -518,7 +533,7 @@ function renderDemo(){
   const computedByPlayerId = {};
   for(const m of DEMO_MATCHUPS){
     for(const p of [...m.home.starters, ...m.away.starters]){
-      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine };
+      computedByPlayerId[p.id] = { points: p.points, contextText: p.contextText, contextLive: p.live, statLine: p.statLine, playerHref: p.playerHref, gameHref: p.gameHref };
     }
   }
   document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
@@ -667,7 +682,7 @@ function buildPlayerIndex(summary){
         const displayName = ath.athlete && ath.athlete.displayName;
         if(!displayName) continue;
         const key = normalizeName(displayName);
-        if(!index[key]) index[key] = { categories: {}, teamAbbr };
+        if(!index[key]) index[key] = { categories: {}, teamAbbr, athleteId: (ath.athlete && ath.athlete.id) || null };
         index[key].categories[cat.name] = { labels: cat.labels || [], values: ath.stats || [] };
       }
     }
@@ -802,13 +817,36 @@ function gameContextText(game){
   return '';
 }
 
+// Every player/DST name and every game-status line links out to ESPN so you
+// can follow along live — direct player/gamecast pages when we've resolved
+// a real ESPN id, falling back to a name search when we haven't (yet, or a
+// player ESPN just doesn't have deep-linkable, e.g. inactive all game).
+function espnPlayerUrl(athleteId, name){
+  if(athleteId) return `https://www.espn.com/nfl/player/_/id/${athleteId}`;
+  return `https://www.espn.com/search/_/q/${encodeURIComponent(name)}`;
+}
+function espnTeamUrl(espnAbbr){
+  return `https://www.espn.com/nfl/team/_/name/${(espnAbbr || '').toLowerCase()}`;
+}
+function espnGameUrl(eventId){
+  return eventId ? `https://www.espn.com/nfl/game/_/gameId/${eventId}` : null;
+}
+
 /* ---------- Per-player point computation ---------- */
 function computePoints(player, gamesByTeam, rules){
   const espnAbbr = player.nflTeam ? (MFL_TO_ESPN_TEAM[player.nflTeam] || player.nflTeam) : null;
   const game = espnAbbr ? gamesByTeam[espnAbbr] : null;
   const ruleKey = POS_TO_RULE_KEY[player.pos] || player.pos;
   const eventRules = rules && rules[ruleKey];
-  const result = { points: 0, game: game || null, contextText: gameContextText(game), contextLive: !!(game && game.state === 'in'), statLine: '' };
+  const result = {
+    points: 0,
+    game: game || null,
+    contextText: gameContextText(game),
+    contextLive: !!(game && game.state === 'in'),
+    statLine: '',
+    playerHref: player.pos === 'D' ? espnTeamUrl(espnAbbr) : espnPlayerUrl(null, player.name),
+    gameHref: espnGameUrl(game && game.eventId),
+  };
   if(!game || !game.eventId || !eventRules) return result;
 
   const box = espnCache.boxByEvent[game.eventId];
@@ -823,6 +861,7 @@ function computePoints(player, gamesByTeam, rules){
 
   const rec = findPlayer(box.playerIndex, player.name);
   if(!rec) return result; // inactive, bye, or a name we couldn't match
+  result.playerHref = espnPlayerUrl(rec.athleteId, player.name);
 
   const stats = offenseStats(rec.categories);
   const fgDistances = [];
@@ -855,14 +894,21 @@ function avatarColor(name){
 }
 
 function playerBlock(p, computed, side){
-  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '' };
-  const nameEl = `<span class="p-name">${escapeHtml(p.name)}</span>`;
+  const c = computed || { points: 0, contextText: '', contextLive: false, statLine: '', playerHref: null, gameHref: null };
+  const nameEl = c.playerHref
+    ? `<a class="p-name" href="${escapeHtml(c.playerHref)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>`
+    : `<span class="p-name">${escapeHtml(p.name)}</span>`;
   const teamEl = `<span class="p-team">${escapeHtml(p.nflTeam || '')}</span>`;
   const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
+  const contextEl = c.contextText
+    ? (c.gameHref
+        ? `<a class="game-link${c.contextLive ? ' live' : ''}" href="${escapeHtml(c.gameHref)}" target="_blank" rel="noopener">${escapeHtml(c.contextText)}</a>`
+        : `<span${c.contextLive ? ' class="live"' : ''}>${escapeHtml(c.contextText)}</span>`)
+    : '';
   return `<div class="p-block ${side}">
     <div class="p-top">${top}</div>
     <div class="p-sub">
-      ${c.contextText ? `<span${c.contextLive ? ' class="live"' : ''}>${escapeHtml(c.contextText)}</span>` : ''}
+      ${contextEl}
       ${c.statLine ? `<span>${escapeHtml(c.statLine)}</span>` : ''}
     </div>
   </div>`;
