@@ -294,6 +294,10 @@ async function verifySlackSignature(request, rawBody, signingSecret) {
 }
 
 async function postToSlack(env, { channel, thread_ts, text }) {
+  if (!env.SLACK_BOT_TOKEN) {
+    console.error("Slack chat.postMessage: SLACK_BOT_TOKEN is not set on this Worker");
+    return;
+  }
   const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
@@ -302,8 +306,15 @@ async function postToSlack(env, { channel, thread_ts, text }) {
     },
     body: JSON.stringify({ channel, thread_ts, text }),
   });
-  const data = await res.json();
-  if (!data.ok) console.error("Slack chat.postMessage error:", data.error);
+  const raw = await res.text();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    console.error("Slack chat.postMessage: non-JSON response", res.status, JSON.stringify(raw.slice(0, 300)));
+    return;
+  }
+  if (!data.ok) console.error("Slack chat.postMessage error:", data.error, "tokenLength:", env.SLACK_BOT_TOKEN.length);
 }
 
 async function handleMention(env, event) {
