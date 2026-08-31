@@ -70,15 +70,23 @@
   --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:26px;
   --ease:cubic-bezier(0.22,0.9,0.3,1);
 }
+/* DARK PALETTE — defined twice on purpose: once for an explicit theme
+   choice, once for system preference. THE TWO BLOCKS MUST DEFINE THE SAME
+   TOKEN NAMES. A token added to only one of them silently falls back to its
+   light value, which is how --tile-sunken once turned every zebra row
+   near-white behind light text under an explicit dark theme. The
+   dark-parity browser test asserts they stay in sync. */
 :root[data-theme="dark"]{
-  --bg:#0f1226;
-  --tile:#181c38;
-  --tile-hover:#1f2444;
+  --bg:#0d1024;
+  --bg-tint:#131731;
+  --tile:#181d3a;
+  --tile-hover:#212747;
+  --tile-sunken:#141833;
   --ink:#eef0fb;
   --ink-dim:#a7addc;
-  --ink-faint:#6f76a3;
-  --border:#2a2f57;
-  --border-soft:#232852;
+  --ink-faint:#7179a8;
+  --border:#282e56;
+  --border-soft:#222750;
   --red:#f0796d;
   --red-dim:rgba(240,121,109,0.14);
   --red-ink:#f7a89f;
@@ -96,7 +104,8 @@
   --warn:#e0b84e;
   --warn-dim:rgba(224,184,78,0.16);
   --warn-ink:#f0d38f;
-  --shadow:0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.4);
+  --shadow:0 1px 2px rgba(0,0,0,0.25), 0 4px 12px -4px rgba(0,0,0,0.3), 0 16px 32px -16px rgba(0,0,0,0.5);
+  --shadow-lift:0 2px 6px rgba(0,0,0,0.3), 0 12px 28px -8px rgba(0,0,0,0.45), 0 32px 56px -24px rgba(0,0,0,0.6);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -684,9 +693,63 @@ button.p-name:hover{ color:var(--blue); }
 .ticker-item:nth-child(even){ background:var(--tile-sunken); }
 .ticker-item.new{ animation:tickerIn 1.8s var(--ease); }
 .tk-time{ font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-faint); flex-shrink:0; min-width:54px; }
-.tk-text{ line-height:1.45; }
-.tk-text .tk-who{ font-weight:650; color:var(--ink); }
-.tk-text .tk-owner{ font-size:9.5px; font-weight:600; color:var(--blue-ink); }
+.tk-text{ line-height:1.45; min-width:0; }
+.tk-players{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:3px; }
+/* Each scorer is its own tap target opening that player's live card. */
+.tk-player{
+  display:inline-flex; align-items:baseline; gap:5px;
+  background:var(--tile-sunken); border:1px solid var(--border-soft);
+  border-radius:999px; padding:3px 9px; cursor:pointer;
+  font-family:inherit; font-size:11px; text-align:left;
+  transition:border-color 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.ticker-item:nth-child(even) .tk-player{ background:var(--tile); }
+.tk-player:hover{ border-color:var(--blue); transform:translateY(-1px); }
+.tk-player .tk-who{ font-weight:650; color:var(--ink); }
+.tk-player .tk-owner{ font-size:9.5px; font-weight:600; color:var(--blue-ink); }
+.tk-delta{
+  font-family:'DM Mono',monospace; font-size:10px; font-weight:500;
+  color:var(--good-ink); background:var(--good-dim);
+  border-radius:5px; padding:1px 5px;
+}
+.tk-total{ font-family:'DM Mono',monospace; font-size:9.5px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+.tk-play{ display:block; color:var(--ink-dim); }
+
+/* NFL team logos, served by ESPN's public CDN. Sized small and given a
+   transparent fallback so a missing crest degrades to blank space rather
+   than a broken-image icon. */
+/* A franchise logo fills its avatar circle; the coloured disc stays behind
+   it so a transparent PNG still reads as a chip. */
+.team-avatar.has-logo, .strip-avatar.has-logo{ overflow:hidden; padding:0; }
+.team-avatar.has-logo img, .strip-avatar.has-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+.nfl-logo{ width:15px; height:15px; object-fit:contain; flex-shrink:0; vertical-align:-3px; margin-right:3px; }
+.pm-nfl-logo{ width:20px; height:20px; object-fit:contain; vertical-align:-5px; margin-right:4px; }
+
+/* Roster-move sheet: MFL web vs. Platinum app */
+.pm-move{
+  display:block; width:100%; margin-top:16px; text-align:center;
+  font-family:'Inter',sans-serif; font-size:11.5px; font-weight:650;
+  color:var(--blue-ink); background:none;
+  border:1px solid var(--border); padding:11px; border-radius:var(--r-md); cursor:pointer;
+  transition:background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.pm-move:hover{ background:var(--blue-dim); border-color:transparent; }
+.move-sheet{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.move-sheet[hidden]{ display:none; }
+.move-opt{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 13px; border:1px solid var(--border); border-radius:var(--r-md);
+  text-decoration:none; color:var(--ink); background:var(--tile-sunken);
+  transition:border-color 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.move-opt:hover{ border-color:var(--blue); transform:translateY(-1px); }
+.move-opt .mo-icon{
+  width:30px; height:30px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; background:var(--blue-dim);
+}
+.move-opt .mo-title{ font-size:12.5px; font-weight:650; }
+.move-opt .mo-sub{ font-size:10px; color:var(--ink-faint); }
 
 @media (max-width: 480px){
   .wrap{ padding:18px 10px 60px; }
@@ -754,6 +817,11 @@ const CADENCE = { lineup: 120000, sbLive: 10000, sbIdle: 60000, boxLive: 20000, 
 // the roster links out to MFL itself (the only outbound links on the page).
 const MFL_LEAGUE_HOME = "https://www45.myfantasyleague.com/2026/home/31492";
 const MFL_LINEUP_URL = "https://www45.myfantasyleague.com/2026/options?L=31492&O=07";
+// MFL Platinum registers the myfantasyleague:// scheme, so this opens the
+// app when it's installed. A phone without it simply does nothing on tap,
+// which is why the web option always sits right beneath it rather than
+// behind a "did that work?" prompt.
+const MFL_PLATINUM_URL = "myfantasyleague://league/31492";
 
 // ESPN's unofficial "site API" — blocked from Cloudflare Workers (403 from
 // Akamai) but works fine from a real browser, so every ESPN call happens
@@ -768,73 +836,12 @@ const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" }
 /* ---------- Demo mode ----------
    Visit this page with ?demo=1 to render fixed, fake data instead of
    calling the Worker/ESPN at all — for iterating on layout/visuals without
-   needing live games. Real team names, fake stat lines. */
-let demoIdSeq = 0;
-function demoPlayer(name, pos, nflTeam, points, contextText, live, statLine){
-  demoIdSeq += 1;
-  return { id: 'demo' + demoIdSeq, name, pos, nflTeam, points, contextText, live: !!live, statLine: statLine || '' };
-}
-const DEMO_MATCHUPS = [
-  {
-    projHome: 101.4,
-    projAway: 104.8,
-    home: { franchiseId: 'd1', team: 'The SHIELD', starters: [
-      demoPlayer('Daniel Jones', 'QB', 'IND', 18.2, 'Final · IND 27-20', false, '255 YD, 2 TD, 1 INT'),
-      demoPlayer('Kenneth Walker III', 'RB', 'SEA', 14.6, 'Q3 8:42', true, '88 YD, 1 TD, 3 REC'),
-      demoPlayer('Javonte Williams', 'RB', 'DAL', 9.3, '● Q3 8:42', true, '61 YD, 4 REC, 22 YD'),
-      demoPlayer('Amon-Ra St. Brown', 'WR', 'DET', 22.7, 'Final · DET 31-24', false, '11 REC, 142 YD, 1 TD'),
-      demoPlayer('Christian Watson', 'WR', 'GB', 6.1, 'Q2 2:15', true, '3 REC, 41 YD'),
-      demoPlayer('Tyler Warren', 'TE', 'IND', 5.4, 'Final · IND 27-20', false, '4 REC, 34 YD'),
-      demoPlayer('Darnell Mooney', 'WR', 'ATL', 0, 'Pregame', false, ''),
-      demoPlayer('Chris Boswell', 'PK', 'PIT', 8.0, 'Final · PIT 20-16', false, '2 FG, 2 XP'),
-      demoPlayer('Green Bay Packers', 'D', 'GB', 12.0, 'Q2 2:15', true, '3 SACK, 1 INT, 14 PA'),
-    ], bench: [
-      demoPlayer('Jaydon Blue', 'RB', 'DAL', 4.2, '● Q3 8:42', true, '28 YD, 1 REC'),
-      demoPlayer('Romeo Doubs', 'WR', 'GB', 7.8, 'Q2 2:15', true, '4 REC, 52 YD'),
-      demoPlayer('Hunter Henry', 'TE', 'NE', 0, 'Pregame', false, ''),
-    ] },
-    away: { franchiseId: 'd2', team: 'Seal Team Nix', starters: [
-      demoPlayer('Bo Nix', 'QB', 'DEN', 24.5, 'Final · DEN 31-13', false, '301 YD, 4 TD'),
-      demoPlayer('Kyren Williams', 'RB', 'LAR', 16.8, '● Q3 8:42', true, '102 YD, 1 TD, 4 REC'),
-      demoPlayer('David Montgomery', 'RB', 'DET', 13.2, 'Final · DET 31-24', false, '79 YD, 1 TD, 2 REC'),
-      demoPlayer('Stefon Diggs', 'WR', 'NE', 9.5, 'Q2 2:15', true, '6 REC, 65 YD'),
-      demoPlayer('DK Metcalf', 'WR', 'PIT', 4.0, 'Final · PIT 20-16', false, '2 REC, 30 YD'),
-      demoPlayer('Michael Mayer', 'TE', 'LV', 3.2, 'Pregame', false, ''),
-      demoPlayer('Chris Olave', 'WR', 'NO', 7.7, 'Q1 5:03', true, '4 REC, 47 YD'),
-      demoPlayer('Cameron Dicker', 'PK', 'LAC', 6.0, 'Final · LAC 23-17', false, '1 FG, 3 XP'),
-      demoPlayer('Denver Broncos', 'D', 'DEN', 15.0, 'Final · DEN 31-13', false, '4 SACK, 2 INT, 13 PA'),
-    ], bench: [
-      demoPlayer('Rashid Shaheed', 'WR', 'NO', 3.1, 'Q1 5:03', true, '2 REC, 21 YD'),
-      demoPlayer('Tyjae Spears', 'RB', 'TEN', 0, 'Pregame', false, ''),
-    ] },
-  },
-  {
-    projHome: 98.2,
-    projAway: 93.6,
-    home: { franchiseId: 'd3', team: 'Crusty Baguettes', starters: [
-      demoPlayer('Kirk Cousins', 'QB', 'ATL', 12.1, 'Final · ATL 20-27', false, '198 YD, 1 TD, 1 INT'),
-      demoPlayer('Chuba Hubbard', 'RB', 'CAR', 8.4, 'Q4 1:12', true, '52 YD, 1 TD'),
-      demoPlayer('Tyrone Tracy', 'RB', 'NYG', 5.0, 'Pregame', false, ''),
-      demoPlayer('Rashod Bateman', 'WR', 'BAL', 10.2, 'Final · BAL 27-24', false, '5 REC, 71 YD'),
-      demoPlayer('Jauan Jennings', 'WR', 'SF', 6.6, 'Q4 1:12', true, '3 REC, 38 YD'),
-      demoPlayer('Mark Andrews', 'TE', 'BAL', 7.9, 'Final · BAL 27-24', false, '5 REC, 49 YD'),
-      demoPlayer('Nick Chubb', 'RB', 'HOU', 3.3, 'Pregame', false, ''),
-      demoPlayer('Cairo Santos', 'PK', 'CHI', 5.0, 'Final · CHI 16-13', false, '1 FG, 2 XP'),
-      demoPlayer('Kansas City Chiefs', 'D', 'KC', 4.0, 'Q4 1:12', true, '1 SACK, 21 PA'),
-    ] },
-    away: { franchiseId: 'd4', team: 'Minnesota Muskies', starters: [
-      demoPlayer('Tua Tagovailoa', 'QB', 'MIA', 19.9, 'Final · MIA 28-21', false, '267 YD, 3 TD'),
-      demoPlayer('Chase Brown', 'RB', 'CIN', 11.5, 'Q4 1:12', true, '68 YD, 1 TD'),
-      demoPlayer('Jaylen Warren', 'RB', 'PIT', 9.8, 'Final · PIT 20-16', false, '58 YD, 3 REC'),
-      demoPlayer('Terry McLaurin', 'WR', 'WAS', 14.3, '● Q3 9:50', true, '7 REC, 98 YD'),
-      demoPlayer('Marvin Harrison Jr.', 'WR', 'ARI', 8.1, 'Pregame', false, ''),
-      demoPlayer('Sam LaPorta', 'TE', 'DET', 6.5, 'Final · DET 31-24', false, '4 REC, 45 YD'),
-      demoPlayer('DeVonta Smith', 'WR', 'PHI', 10.0, 'Q3 9:50', true, '5 REC, 63 YD'),
-      demoPlayer('Harrison Butker', 'PK', 'KC', 9.0, 'Q4 1:12', true, '3 FG, 0 XP'),
-      demoPlayer('Pittsburgh Steelers', 'D', 'PIT', 6.0, 'Final · PIT 20-16', false, '2 SACK, 1 INT, 16 PA'),
-    ] },
-  },
-];
+   needing live games. Generated by build.js from the real post-draft
+   rosters (seed_roster_final.json), so these are this league's actual teams
+   and players with invented stat lines and game states — which also means
+   it never shows a position the league doesn't roster. Regenerated on every
+   `node build.js`, so it tracks the league instead of drifting. */
+const DEMO_MATCHUPS = [{"home":{"franchiseId":"The SHIELD","team":"The SHIELD","starters":[{"id":"demo2","name":"Jordan Love","pos":"QB","nflTeam":null,"points":10.3,"contextText":"Final · 27-20","live":false,"statLine":"243 YD, 3 TD, 1 INT"},{"id":"demo4","name":"Bryce Young","pos":"QB","nflTeam":null,"points":9.2,"contextText":"Final · 31-24","live":false,"statLine":"172 YD, 0 TD, 0 INT"},{"id":"demo6","name":"Christian McCaffrey","pos":"RB","nflTeam":null,"points":18.8,"contextText":"Q4 1:12","live":true,"statLine":"88 YD, 0 TD, 3 REC"},{"id":"demo8","name":"Jonathon Brooks","pos":"RB","nflTeam":null,"points":5,"contextText":"Final · 27-20","live":false,"statLine":"100 YD, 0 TD, 0 REC"},{"id":"demo10","name":"Amon-Ra St. Brown","pos":"WR","nflTeam":null,"points":12.3,"contextText":"Final · 31-24","live":false,"statLine":"7 REC, 18 YD, 1 TD"},{"id":"demo12","name":"Chris Olave","pos":"WR","nflTeam":null,"points":4.7,"contextText":"Q4 1:12","live":true,"statLine":"3 REC, 122 YD, 1 TD"},{"id":"demo14","name":"Tetairoa McMillan","pos":"WR","nflTeam":null,"points":17.3,"contextText":"Final · 27-20","live":false,"statLine":"3 REC, 108 YD, 1 TD"},{"id":"demo16","name":"Brenton Strange","pos":"TE","nflTeam":null,"points":20.7,"contextText":"Final · 31-24","live":false,"statLine":"4 REC, 77 YD"},{"id":"demo18","name":"Marvin Harrison Jr.","pos":"WR","nflTeam":null,"points":15,"contextText":"Q4 1:12","live":true,"statLine":"4 REC, 45 YD, 0 TD"},{"id":"demo20","name":"Philadelphia Eagles","pos":"D","nflTeam":null,"points":5.9,"contextText":"Final · 27-20","live":false,"statLine":"4 SACK, 2 INT, 3 PA"}],"bench":[{"id":"demo22","name":"MarShawn Lloyd","pos":"RB","nflTeam":null,"points":12.4,"contextText":"● Q3 8:42","live":true,"statLine":"84 YD, 0 TD, 4 REC"},{"id":"demo24","name":"Jayden Reed","pos":"WR","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo26","name":"Braelon Allen","pos":"RB","nflTeam":null,"points":4.6,"contextText":"Q1 5:03","live":true,"statLine":"36 YD, 0 TD, 1 REC"},{"id":"demo28","name":"Tua Tagovailoa","pos":"QB","nflTeam":null,"points":7.6,"contextText":"● Q3 8:42","live":true,"statLine":"216 YD, 0 TD, 0 INT"}]},"away":{"franchiseId":"The Flying Kites","team":"The Flying Kites","starters":[{"id":"demo30","name":"Tyler Shough","pos":"QB","nflTeam":null,"points":13.7,"contextText":"Q3 8:42","live":true,"statLine":"187 YD, 3 TD, 1 INT"},{"id":"demo32","name":"Jayden Daniels","pos":"QB","nflTeam":null,"points":6.2,"contextText":"Q2 2:15","live":true,"statLine":"142 YD, 2 TD, 0 INT"},{"id":"demo34","name":"Quinshon Judkins","pos":"RB","nflTeam":null,"points":20.6,"contextText":"Final · 20-16","live":false,"statLine":"106 YD, 0 TD, 1 REC"},{"id":"demo36","name":"Tony Pollard","pos":"RB","nflTeam":null,"points":0.9,"contextText":"Q3 8:42","live":true,"statLine":"59 YD, 1 TD, 4 REC"},{"id":"demo38","name":"A.J. Brown","pos":"WR","nflTeam":null,"points":18.8,"contextText":"Q2 2:15","live":true,"statLine":"6 REC, 53 YD, 0 TD"},{"id":"demo40","name":"Luther Burden","pos":"WR","nflTeam":null,"points":10.9,"contextText":"Final · 20-16","live":false,"statLine":"2 REC, 84 YD, 1 TD"},{"id":"demo42","name":"Carnell Tate","pos":"WR","nflTeam":null,"points":15.4,"contextText":"Q3 8:42","live":true,"statLine":"5 REC, 69 YD, 0 TD"},{"id":"demo44","name":"Trey McBride","pos":"TE","nflTeam":null,"points":19.7,"contextText":"Q2 2:15","live":true,"statLine":"6 REC, 67 YD"},{"id":"demo46","name":"Mike Evans","pos":"WR","nflTeam":null,"points":2.6,"contextText":"Final · 20-16","live":false,"statLine":"3 REC, 101 YD, 0 TD"},{"id":"demo48","name":"Houston Texans","pos":"D","nflTeam":null,"points":20.4,"contextText":"Q3 8:42","live":true,"statLine":"4 SACK, 0 INT, 8 PA"}],"bench":[{"id":"demo50","name":"Jonah Coleman","pos":"RB","nflTeam":null,"points":0.2,"contextText":"Final · 31-24","live":false,"statLine":"22 YD, 0 TD, 2 REC"},{"id":"demo52","name":"Emmett Johnson","pos":"RB","nflTeam":null,"points":19.2,"contextText":"Q4 1:12","live":true,"statLine":"62 YD, 0 TD, 2 REC"},{"id":"demo54","name":"Keaton Mitchell","pos":"RB","nflTeam":null,"points":9.3,"contextText":"Final · 27-20","live":false,"statLine":"53 YD, 1 TD, 3 REC"},{"id":"demo56","name":"Caleb Douglas","pos":"WR","nflTeam":null,"points":12.3,"contextText":"Final · 31-24","live":false,"statLine":"4 REC, 68 YD, 1 TD"}]}},{"home":{"franchiseId":"Jack of All Trades","team":"Jack of All Trades","starters":[{"id":"demo58","name":"Brock Purdy","pos":"QB","nflTeam":null,"points":18.4,"contextText":"● Q3 8:42","live":true,"statLine":"294 YD, 2 TD, 0 INT"},{"id":"demo60","name":"Aaron Rodgers","pos":"QB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo62","name":"Bucky Irving","pos":"RB","nflTeam":null,"points":13.2,"contextText":"Q1 5:03","live":true,"statLine":"32 YD, 0 TD, 2 REC"},{"id":"demo64","name":"Woody Marks","pos":"RB","nflTeam":null,"points":12.3,"contextText":"● Q3 8:42","live":true,"statLine":"23 YD, 1 TD, 3 REC"},{"id":"demo66","name":"Jaylen Waddle","pos":"WR","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo68","name":"Rome Odunze","pos":"WR","nflTeam":null,"points":11.1,"contextText":"Q1 5:03","live":true,"statLine":"4 REC, 56 YD, 1 TD"},{"id":"demo70","name":"Makai Lemon","pos":"WR","nflTeam":null,"points":14.9,"contextText":"● Q3 8:42","live":true,"statLine":"9 REC, 54 YD, 1 TD"},{"id":"demo72","name":"Jake Ferguson","pos":"TE","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo74","name":"T.J. Hockenson","pos":"TE","nflTeam":null,"points":17.9,"contextText":"Q1 5:03","live":true,"statLine":"6 REC, 49 YD"},{"id":"demo76","name":"Tennessee Titans","pos":"D","nflTeam":null,"points":18.8,"contextText":"● Q3 8:42","live":true,"statLine":"3 SACK, 2 INT, 6 PA"}],"bench":[{"id":"demo78","name":"Brian Robinson","pos":"RB","nflTeam":null,"points":18.9,"contextText":"Q2 2:15","live":true,"statLine":"89 YD, 1 TD, 4 REC"},{"id":"demo80","name":"Kayshon Boutte","pos":"WR","nflTeam":null,"points":18.7,"contextText":"Final · 20-16","live":false,"statLine":"2 REC, 32 YD, 1 TD"},{"id":"demo82","name":"Mike Washington Jr.","pos":"RB","nflTeam":null,"points":18.5,"contextText":"Q3 8:42","live":true,"statLine":"25 YD, 1 TD, 0 REC"},{"id":"demo84","name":"Ja'Kobi Lane","pos":"WR","nflTeam":null,"points":9,"contextText":"Q2 2:15","live":true,"statLine":"7 REC, 85 YD, 0 TD"}]},"away":{"franchiseId":"Average Joes","team":"Average Joes","starters":[{"id":"demo86","name":"Daniel Jones","pos":"QB","nflTeam":null,"points":2.1,"contextText":"Final · 31-24","live":false,"statLine":"161 YD, 1 TD, 1 INT"},{"id":"demo88","name":"Kyler Murray","pos":"QB","nflTeam":null,"points":16.4,"contextText":"Q4 1:12","live":true,"statLine":"244 YD, 0 TD, 0 INT"},{"id":"demo90","name":"Jeremiyah Love","pos":"RB","nflTeam":null,"points":7.9,"contextText":"Final · 27-20","live":false,"statLine":"39 YD, 1 TD, 4 REC"},{"id":"demo92","name":"Jordan Mason","pos":"RB","nflTeam":null,"points":8.5,"contextText":"Final · 31-24","live":false,"statLine":"105 YD, 1 TD, 0 REC"},{"id":"demo94","name":"Garrett Wilson","pos":"WR","nflTeam":null,"points":20,"contextText":"Q4 1:12","live":true,"statLine":"9 REC, 35 YD, 0 TD"},{"id":"demo96","name":"Ja'Marr Chase","pos":"WR","nflTeam":null,"points":15.7,"contextText":"Final · 27-20","live":false,"statLine":"5 REC, 72 YD, 1 TD"},{"id":"demo98","name":"D.J. Moore","pos":"WR","nflTeam":null,"points":13.7,"contextText":"Final · 31-24","live":false,"statLine":"3 REC, 42 YD, 1 TD"},{"id":"demo100","name":"Colston Loveland","pos":"TE","nflTeam":null,"points":18.8,"contextText":"Q4 1:12","live":true,"statLine":"3 REC, 58 YD"},{"id":"demo102","name":"Blake Corum","pos":"RB","nflTeam":null,"points":9.8,"contextText":"Final · 27-20","live":false,"statLine":"88 YD, 0 TD, 3 REC"},{"id":"demo104","name":"New England Patriots","pos":"D","nflTeam":null,"points":5.6,"contextText":"Final · 31-24","live":false,"statLine":"1 SACK, 2 INT, 14 PA"}],"bench":[{"id":"demo106","name":"KC Concepcion","pos":"WR","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo108","name":"Michael Pittman","pos":"WR","nflTeam":null,"points":2.9,"contextText":"Q1 5:03","live":true,"statLine":"6 REC, 64 YD, 1 TD"},{"id":"demo110","name":"Zach Charbonnet","pos":"RB","nflTeam":null,"points":20.5,"contextText":"● Q3 8:42","live":true,"statLine":"105 YD, 1 TD, 0 REC"},{"id":"demo112","name":"Michael Penix Jr.","pos":"QB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""}]}},{"home":{"franchiseId":"Drinkers From Shoes","team":"Drinkers From Shoes","starters":[{"id":"demo114","name":"Jalen Hurts","pos":"QB","nflTeam":null,"points":9.1,"contextText":"Q2 2:15","live":true,"statLine":"231 YD, 3 TD, 1 INT"},{"id":"demo116","name":"Bo Nix","pos":"QB","nflTeam":null,"points":8.3,"contextText":"Final · 20-16","live":false,"statLine":"313 YD, 1 TD, 1 INT"},{"id":"demo118","name":"Cam Skattebo","pos":"RB","nflTeam":null,"points":17.3,"contextText":"Q3 8:42","live":true,"statLine":"103 YD, 1 TD, 3 REC"},{"id":"demo120","name":"James Cook","pos":"RB","nflTeam":null,"points":6.7,"contextText":"Q2 2:15","live":true,"statLine":"87 YD, 1 TD, 2 REC"},{"id":"demo122","name":"Brian Thomas Jr.","pos":"WR","nflTeam":null,"points":4.1,"contextText":"Final · 20-16","live":false,"statLine":"9 REC, 46 YD, 1 TD"},{"id":"demo124","name":"DeVonta Smith","pos":"WR","nflTeam":null,"points":8.3,"contextText":"Q3 8:42","live":true,"statLine":"6 REC, 98 YD, 1 TD"},{"id":"demo126","name":"Christian Watson","pos":"WR","nflTeam":null,"points":16.8,"contextText":"Q2 2:15","live":true,"statLine":"1 REC, 43 YD, 0 TD"},{"id":"demo128","name":"Sam LaPorta","pos":"TE","nflTeam":null,"points":12.1,"contextText":"Final · 20-16","live":false,"statLine":"2 REC, 61 YD"},{"id":"demo130","name":"Chris Rodriguez","pos":"RB","nflTeam":null,"points":2.9,"contextText":"Q3 8:42","live":true,"statLine":"49 YD, 1 TD, 4 REC"},{"id":"demo132","name":"Jacksonville Jaguars","pos":"D","nflTeam":null,"points":6.3,"contextText":"Q2 2:15","live":true,"statLine":"3 SACK, 0 INT, 7 PA"}],"bench":[{"id":"demo134","name":"Fernando Mendoza","pos":"QB","nflTeam":null,"points":9.8,"contextText":"Q4 1:12","live":true,"statLine":"298 YD, 2 TD, 0 INT"},{"id":"demo136","name":"Deebo Samuel","pos":"WR","nflTeam":null,"points":8.7,"contextText":"Final · 27-20","live":false,"statLine":"7 REC, 62 YD, 1 TD"},{"id":"demo138","name":"Tyrone Tracy","pos":"RB","nflTeam":null,"points":11.3,"contextText":"Final · 31-24","live":false,"statLine":"43 YD, 1 TD, 3 REC"},{"id":"demo140","name":"Kimani Vidal","pos":"RB","nflTeam":null,"points":3,"contextText":"Q4 1:12","live":true,"statLine":"80 YD, 0 TD, 0 REC"}]},"away":{"franchiseId":"Surfin' Loons","team":"Surfin' Loons","starters":[{"id":"demo142","name":"Justin Herbert","pos":"QB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo144","name":"Geno Smith","pos":"QB","nflTeam":null,"points":15.5,"contextText":"Q1 5:03","live":true,"statLine":"265 YD, 1 TD, 1 INT"},{"id":"demo146","name":"Kyle Monangai","pos":"RB","nflTeam":null,"points":20,"contextText":"● Q3 8:42","live":true,"statLine":"100 YD, 0 TD, 0 REC"},{"id":"demo148","name":"Javonte Williams","pos":"RB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo150","name":"CeeDee Lamb","pos":"WR","nflTeam":null,"points":5.2,"contextText":"Q1 5:03","live":true,"statLine":"5 REC, 47 YD, 0 TD"},{"id":"demo152","name":"Malik Nabers","pos":"WR","nflTeam":null,"points":15.4,"contextText":"● Q3 8:42","live":true,"statLine":"5 REC, 69 YD, 0 TD"},{"id":"demo154","name":"Terry McLaurin","pos":"WR","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo156","name":"Brock Bowers","pos":"TE","nflTeam":null,"points":1.8,"contextText":"Q1 5:03","live":true,"statLine":"1 REC, 28 YD"},{"id":"demo158","name":"Jacory Croskey-Merritt","pos":"RB","nflTeam":null,"points":12.7,"contextText":"● Q3 8:42","live":true,"statLine":"57 YD, 1 TD, 2 REC"},{"id":"demo160","name":"Pittsburgh Steelers","pos":"D","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""}],"bench":[{"id":"demo162","name":"De'Zhaun Stribling","pos":"WR","nflTeam":null,"points":16.1,"contextText":"Final · 20-16","live":false,"statLine":"9 REC, 106 YD, 1 TD"},{"id":"demo164","name":"Wan'Dale Robinson","pos":"WR","nflTeam":null,"points":0.8,"contextText":"Q3 8:42","live":true,"statLine":"6 REC, 103 YD, 0 TD"},{"id":"demo166","name":"Dalton Kincaid","pos":"TE","nflTeam":null,"points":4.8,"contextText":"Q2 2:15","live":true,"statLine":"1 REC, 58 YD"},{"id":"demo168","name":"Antonio Williams","pos":"WR","nflTeam":null,"points":3.3,"contextText":"Final · 20-16","live":false,"statLine":"1 REC, 48 YD, 1 TD"}]}},{"home":{"franchiseId":"My Name Is","team":"My Name Is","starters":[{"id":"demo170","name":"Caleb Williams","pos":"QB","nflTeam":null,"points":20,"contextText":"Q4 1:12","live":true,"statLine":"160 YD, 0 TD, 0 INT"},{"id":"demo172","name":"Sam Darnold","pos":"QB","nflTeam":null,"points":14,"contextText":"Final · 27-20","live":false,"statLine":"250 YD, 2 TD, 0 INT"},{"id":"demo174","name":"Saquon Barkley","pos":"RB","nflTeam":null,"points":17.6,"contextText":"Final · 31-24","live":false,"statLine":"106 YD, 0 TD, 1 REC"},{"id":"demo176","name":"Breece Hall","pos":"RB","nflTeam":null,"points":1.2,"contextText":"Q4 1:12","live":true,"statLine":"32 YD, 0 TD, 2 REC"},{"id":"demo178","name":"Jaxon Smith-Njigba","pos":"WR","nflTeam":null,"points":10.4,"contextText":"Final · 27-20","live":false,"statLine":"9 REC, 19 YD, 0 TD"},{"id":"demo180","name":"Matthew Golden","pos":"WR","nflTeam":null,"points":20,"contextText":"Final · 31-24","live":false,"statLine":"6 REC, 55 YD, 0 TD"},{"id":"demo182","name":"Khalil Shakir","pos":"WR","nflTeam":null,"points":13.2,"contextText":"Q4 1:12","live":true,"statLine":"1 REC, 87 YD, 0 TD"},{"id":"demo184","name":"Tucker Kraft","pos":"TE","nflTeam":null,"points":6.5,"contextText":"Final · 27-20","live":false,"statLine":"6 REC, 75 YD"},{"id":"demo186","name":"Travis Etienne","pos":"RB","nflTeam":null,"points":4,"contextText":"Final · 31-24","live":false,"statLine":"90 YD, 0 TD, 0 REC"}],"bench":[{"id":"demo188","name":"Romeo Doubs","pos":"WR","nflTeam":null,"points":2.6,"contextText":"Q4 1:12","live":true,"statLine":"9 REC, 51 YD, 0 TD"},{"id":"demo190","name":"Quentin Johnston","pos":"WR","nflTeam":null,"points":13.2,"contextText":"Final · 27-20","live":false,"statLine":"1 REC, 57 YD, 0 TD"},{"id":"demo192","name":"Mark Andrews","pos":"TE","nflTeam":null,"points":0.6,"contextText":"Final · 31-24","live":false,"statLine":"1 REC, 16 YD"},{"id":"demo194","name":"J.J. McCarthy","pos":"QB","nflTeam":null,"points":12.6,"contextText":"Q4 1:12","live":true,"statLine":"176 YD, 0 TD, 0 INT"}]},"away":{"franchiseId":"Minnesota Muskies","team":"Minnesota Muskies","starters":[{"id":"demo196","name":"Jaxson Dart","pos":"QB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo198","name":"Joe Burrow","pos":"QB","nflTeam":null,"points":7.2,"contextText":"Q1 5:03","live":true,"statLine":"302 YD, 2 TD, 0 INT"},{"id":"demo200","name":"Chase Brown","pos":"RB","nflTeam":null,"points":1.3,"contextText":"● Q3 8:42","live":true,"statLine":"33 YD, 1 TD, 3 REC"},{"id":"demo202","name":"Omarion Hampton","pos":"RB","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo204","name":"Justin Jefferson","pos":"WR","nflTeam":null,"points":16,"contextText":"Q1 5:03","live":true,"statLine":"5 REC, 25 YD, 0 TD"},{"id":"demo206","name":"Davante Adams","pos":"WR","nflTeam":null,"points":3.4,"contextText":"● Q3 8:42","live":true,"statLine":"8 REC, 49 YD, 0 TD"},{"id":"demo208","name":"Parker Washington","pos":"WR","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""},{"id":"demo210","name":"Isaiah Likely","pos":"TE","nflTeam":null,"points":4,"contextText":"Q1 5:03","live":true,"statLine":"5 REC, 50 YD"},{"id":"demo212","name":"TreVeyon Henderson","pos":"RB","nflTeam":null,"points":14.5,"contextText":"● Q3 8:42","live":true,"statLine":"105 YD, 1 TD, 0 REC"},{"id":"demo214","name":"Baltimore Ravens","pos":"D","nflTeam":null,"points":0,"contextText":"Pregame","live":false,"statLine":""}],"bench":[{"id":"demo216","name":"Rico Dowdle","pos":"RB","nflTeam":null,"points":9.1,"contextText":"Final · 20-16","live":false,"statLine":"21 YD, 1 TD, 1 REC"},{"id":"demo218","name":"DK Metcalf","pos":"WR","nflTeam":null,"points":4.6,"contextText":"Q3 8:42","live":true,"statLine":"2 REC, 111 YD, 0 TD"},{"id":"demo220","name":"Josh Jacobs","pos":"RB","nflTeam":null,"points":7.3,"contextText":"Q2 2:15","live":true,"statLine":"93 YD, 1 TD, 3 REC"},{"id":"demo222","name":"Ty Simpson","pos":"QB","nflTeam":null,"points":4.1,"contextText":"Final · 20-16","live":false,"statLine":"181 YD, 1 TD, 1 INT"}]}}];
 
 // Demo mode runs the exact same structural-render + patch pipeline as live
 // mode — it just fills `computed`, `lineup`, and the ticker with fixed data
@@ -843,11 +850,15 @@ const DEMO_MATCHUPS = [
 function renderDemo(){
   const POS_PROJ = { QB: 18, RB: 12, WR: 11, TE: 8, PK: 8, D: 8 };
   const projections = {};
-  const driveByName = {
-    'Kenneth Walker III': { shortDownDistance: '2nd & 7', possessionText: 'SEA 41', lastPlayText: 'K.Walker rush to the SEA 41 for 6 yards.', yardLine: 41, hasBall: true },
-    'Kyren Williams': { shortDownDistance: '1st & Goal', possessionText: 'DAL 8', lastPlayText: 'M.Stafford pass to K.Williams to the DAL 8 for 12 yards.', yardLine: 92, hasBall: true },
-    'Terry McLaurin': { shortDownDistance: '3rd & 2', possessionText: 'PHI 33', lastPlayText: 'J.Daniels pass incomplete deep right.', yardLine: 67, hasBall: true },
-  };
+  // Handed out to the first few in-progress players by position rather than
+  // by name, so the drive tracker still demos correctly whoever the current
+  // rosters happen to contain.
+  const DRIVES = [
+    { shortDownDistance: '1st & Goal', possessionText: 'DAL 8', lastPlayText: 'Pass to the DAL 8 for 12 yards.', yardLine: 92, hasBall: true },
+    { shortDownDistance: '2nd & 7', possessionText: 'SEA 41', lastPlayText: 'Rush to the SEA 41 for 6 yards.', yardLine: 41, hasBall: true },
+    { shortDownDistance: '3rd & 2', possessionText: 'PHI 33', lastPlayText: 'Pass incomplete deep right.', yardLine: 67, hasBall: true },
+  ];
+  let driveSeq = 0;
   for(const m of DEMO_MATCHUPS){
     for(const side of [m.home, m.away]){
       for(const p of [...(side.starters || []), ...(side.bench || [])]){
@@ -857,7 +868,7 @@ function renderDemo(){
           : phase === 'in' ? Math.round((p.points + (POS_PROJ[p.pos] || 8) * 0.5) * 10) / 10
           : (POS_PROJ[p.pos] || 8);
         const qc = p.contextText.match(/Q(\d) (\d+:\d+)/) || [];
-        const drive = driveByName[p.name];
+        const drive = (phase === 'in' && driveSeq < DRIVES.length) ? DRIVES[driveSeq++] : null;
         const game = phase === 'in' ? {
           state: 'in', final: false, eventId: null,
           quarter: Number(qc[1]) || 3, clock: qc[2] || '8:42',
@@ -884,11 +895,29 @@ function renderDemo(){
   }
   lineup = { status: 'live', week: 1, totalWeeks: 1, season: 2026, matchups: DEMO_MATCHUPS, projections, rules: null };
   currentWeek = 1;
-  tickerEvents = [
-    { when: 'Q3 8:42', text: 'DET: Amon-Ra St. Brown 12 Yd pass from Jared Goff (Jake Bates Kick)', who: [{ name: 'Amon-Ra St. Brown', owner: 'The SHIELD' }] },
-    { when: 'Q2 2:15', text: 'GB: Christian Watson 41 Yd pass from Jordan Love (Brandon McManus Kick)', who: [{ name: 'Christian Watson', owner: 'The SHIELD' }] },
-    { when: 'Q1 11:03', text: 'DEN: Bo Nix 5 Yd Run (Wil Lutz Kick)', who: [{ name: 'Bo Nix', owner: 'Seal Team Nix' }] },
+  // Built from the generated demo rosters rather than hard-coded names, so
+  // every feed row carries a real player id — which is what makes the row
+  // clickable and lets it show that player's actual demo point total.
+  const scorers = [];
+  for(const m of DEMO_MATCHUPS){
+    for(const side of [m.home, m.away]){
+      for(const p of (side.starters || [])){
+        if(p.pos !== 'D' && computed[p.id] && computed[p.id].points > 6) scorers.push({ p, owner: side.team });
+      }
+    }
+  }
+  const PLAYS = [
+    (n) => `${n} 12 Yd TD reception`,
+    (n) => `${n} 3 Yd TD run`,
+    (n) => `${n} 41 Yd TD reception`,
+    (n) => `${n} 2 Yd TD run`,
   ];
+  const WHEN = ['Q3 8:42', 'Q2 2:15', 'Q1 11:03', 'Q4 6:20'];
+  tickerEvents = scorers.slice(0, 4).map((s, i) => ({
+    when: WHEN[i % WHEN.length],
+    text: (s.p.nflTeam ? s.p.nflTeam + ': ' : '') + PLAYS[i % PLAYS.length](s.p.name),
+    who: [{ pid: s.p.id, name: s.p.name, owner: s.owner, delta: i % 2 === 0 ? 6 : 4.4 }],
+  }));
   document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
   document.getElementById('weekNav').innerHTML = `<div class="week-nav">
     <button disabled>&lsaquo;</button>
@@ -1383,6 +1412,28 @@ function avatarColor(name){
   return `hsl(${hash % 360} 50% 42%)`;
 }
 
+// A franchise avatar is that owner's own MFL logo when they've set one, and
+// coloured initials when they haven't — decided per team, so one owner
+// without a logo doesn't cost everyone else theirs. onerror falls back to
+// initials if the image 404s.
+function teamAvatar(side, cls){
+  const initialsHtml = escapeHtml(initials(side.team));
+  if(side.logo){
+    return `<span class="${cls} has-logo" style="background:${avatarColor(side.team)}">`
+      + `<img src="${escapeHtml(side.logo)}" alt="" loading="lazy"`
+      + ` onerror="this.remove(); this.parentNode.textContent='${initialsHtml.replace(/'/g, "\\'")}';">`
+      + `</span>`;
+  }
+  return `<span class="${cls}" style="background:${avatarColor(side.team)}">${initialsHtml}</span>`;
+}
+
+// NFL crest for a player's real team, from ESPN's public logo CDN.
+function nflLogo(abbr, cls){
+  const espn = abbr ? (MFL_TO_ESPN_TEAM[abbr] || abbr) : null;
+  if(!espn) return '';
+  return `<img class="${cls}" src="https://a.espncdn.com/i/teamlogos/nfl/500/${escapeHtml(espn.toLowerCase())}.png" alt="" loading="lazy" onerror="this.remove()">`;
+}
+
 // The structural pass renders shells with data attributes; every dynamic
 // value (scores, clocks, stat lines, projections, win%) is patched into
 // place afterwards without rebuilding the DOM, so a mid-swipe update never
@@ -1390,7 +1441,7 @@ function avatarColor(name){
 function playerBlock(p, side){
   playerRegistry[p.id] = p;
   const nameEl = `<button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`;
-  const teamEl = `<span class="p-team">${escapeHtml(p.nflTeam || '')}</span>`;
+  const teamEl = `<span class="p-team">${nflLogo(p.nflTeam, 'nfl-logo')}${escapeHtml(p.nflTeam || '')}</span>`;
   const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
   return `<div class="p-block ${side}">
     <div class="p-top">${top}</div>
@@ -1429,7 +1480,7 @@ function renderMatchup(m, i){
   const teamHtml = (side, key) => `
       <div class="matchup-team ${key}" data-mteam="${i}-${key}">
         <div class="team-id">
-          <span class="team-avatar" style="background:${avatarColor(side.team)}">${escapeHtml(initials(side.team))}</span>
+          ${teamAvatar(side, 'team-avatar')}
           <span class="name">${escapeHtml(side.team)}</span>
         </div>
         <span class="score" data-tscore="${i}-${key}">0.0</span>
@@ -1454,11 +1505,11 @@ function renderLeagueStrip(matchups){
   if(!matchups.length){ strip.innerHTML = ''; return; }
   strip.innerHTML = `<div class="league-strip">${matchups.map((m, i) => `
     <button class="strip-pill${i === slideIndex ? ' active' : ''}" data-i="${i}">
-      <span class="strip-avatar" style="background:${avatarColor(m.home.team)}">${escapeHtml(initials(m.home.team))}</span>
+      ${teamAvatar(m.home, 'strip-avatar')}
       <span class="strip-score" data-strip="${i}-home">0.0</span>
       <span class="strip-vs">&middot;</span>
       <span class="strip-score" data-strip="${i}-away">0.0</span>
-      <span class="strip-avatar" style="background:${avatarColor(m.away.team)}">${escapeHtml(initials(m.away.team))}</span>
+      ${teamAvatar(m.away, 'strip-avatar')}
     </button>`).join('')}</div>`;
   strip.querySelectorAll('.strip-pill').forEach((btn) => {
     btn.onclick = () => scrollToSlide(Number(btn.dataset.i));
@@ -1602,6 +1653,10 @@ function patchDynamic(){
   for(const p of allPlayersIn(matchups)){
     const c = computed[p.id] || {};
     setLiveText(document.querySelector(`[data-score="${p.id}"]`), ((c.points || 0)).toFixed(1), true);
+    // Feed rows carry the same running total, so they can't drift from the board.
+    for(const el of document.querySelectorAll(`[data-tkpts="${p.id}"]`)){
+      setLiveText(el, (c.points || 0).toFixed(1) + ' pts', false);
+    }
     const ctxEl = document.querySelector(`[data-ctx="${p.id}"]`);
     if(ctxEl){
       const txt = c.contextText || '';
@@ -1681,7 +1736,7 @@ function playerCardHtml(p, c){
           <div class="pm-name">${escapeHtml(p.name)}</div>
           <div class="pm-meta">
             <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
-            <span class="pm-team">${escapeHtml(p.nflTeam || 'FA')}</span>
+            <span class="pm-team">${nflLogo(p.nflTeam, 'pm-nfl-logo')}${escapeHtml(p.nflTeam || 'FA')}</span>
           </div>
         </div>
         <div class="pm-points">${(c.points || 0).toFixed(1)}<span>PTS</span></div>
@@ -1689,7 +1744,17 @@ function playerCardHtml(p, c){
       ${c.contextText ? `<div class="pm-status${c.contextLive ? ' live' : ''}">${escapeHtml(c.contextText)}</div>` : ''}
       <div class="pm-stats">${c.statLine ? escapeHtml(c.statLine) : 'No stats yet this week.'}</div>
       ${drive}
-      <a class="pm-mfl" href="${MFL_LINEUP_URL}" target="_blank" rel="noopener">Manage lineup on MFL &nearr;</a>`;
+      <button type="button" class="pm-move" id="pmMove">Make a roster move &darr;</button>
+      <div class="move-sheet" id="pmMoveSheet" hidden>
+        <a class="move-opt" href="${MFL_PLATINUM_URL}">
+          <span class="mo-icon">&#128241;</span>
+          <span><span class="mo-title">MFL Platinum app</span><br><span class="mo-sub">Opens the app if it's installed</span></span>
+        </a>
+        <a class="move-opt" href="${MFL_LINEUP_URL}" target="_blank" rel="noopener">
+          <span class="mo-icon">&#127760;</span>
+          <span><span class="mo-title">MyFantasyLeague site</span><br><span class="mo-sub">Full lineup and roster tools</span></span>
+        </a>
+      </div>`;
 }
 
 function openPlayerCard(pid){
@@ -1701,7 +1766,24 @@ function openPlayerCard(pid){
     <div class="pm-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(p.name)} player card">${playerCardHtml(p, computed[pid] || {})}</div>
   </div>`;
   document.getElementById('pmBackdrop').onclick = (e) => { if(e.target.id === 'pmBackdrop') closePlayerCard(); };
-  document.getElementById('pmClose').onclick = closePlayerCard;
+  bindCardControls();
+}
+// The move sheet's open/closed state has to survive the card re-rendering
+// itself every few seconds, or it would snap shut mid-tap.
+let moveSheetOpen = false;
+function bindCardControls(){
+  const close = document.getElementById('pmClose');
+  if(close) close.onclick = closePlayerCard;
+  const btn = document.getElementById('pmMove');
+  const sheet = document.getElementById('pmMoveSheet');
+  if(!btn || !sheet) return;
+  sheet.hidden = !moveSheetOpen;
+  btn.innerHTML = moveSheetOpen ? 'Make a roster move &uarr;' : 'Make a roster move &darr;';
+  btn.onclick = () => {
+    moveSheetOpen = !moveSheetOpen;
+    sheet.hidden = !moveSheetOpen;
+    btn.innerHTML = moveSheetOpen ? 'Make a roster move &uarr;' : 'Make a roster move &darr;';
+  };
 }
 // Re-render just the card contents on each patch so an open card's points,
 // drive info, and stat line move in real time too.
@@ -1710,10 +1792,11 @@ function refreshOpenCard(){
   const card = document.querySelector('#playerModal .pm-card');
   if(!p || !card){ openPid = null; return; }
   card.innerHTML = playerCardHtml(p, computed[openPid] || {});
-  document.getElementById('pmClose').onclick = closePlayerCard;
+  bindCardControls();
 }
 function closePlayerCard(){
   openPid = null;
+  moveSheetOpen = false;
   document.getElementById('playerModal').innerHTML = '';
 }
 document.addEventListener('click', (e) => {
@@ -1725,15 +1808,32 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- League feed (scoring plays involving rostered players) ---------- */
+// Each feed row is a button that opens the same player card as tapping the
+// player in a matchup, and carries that player's fantasy impact: the points
+// the play itself added (when attributable to a single play this refresh)
+// plus their running total, patched live like every other number.
 function renderTickerFull(newCount){
   const el = document.getElementById('ticker');
   if(!tickerEvents.length){ el.innerHTML = ''; return; }
+  const whoHtml = (w) => {
+    const total = (computed[w.pid] && computed[w.pid].points) || 0;
+    const delta = w.delta != null && Math.abs(w.delta) >= 0.05
+      ? `<span class="tk-delta">+${w.delta.toFixed(1)}</span>` : '';
+    return `<button type="button" class="tk-player js-player-card" data-player-id="${escapeHtml(w.pid)}">
+      <span class="tk-who">${escapeHtml(w.name)}</span>
+      <span class="tk-owner">${escapeHtml(w.owner)}</span>
+      ${delta}<span class="tk-total" data-tkpts="${escapeHtml(w.pid)}">${total.toFixed(1)} pts</span>
+    </button>`;
+  };
   el.innerHTML = `<div class="ticker">
     <button type="button" class="ticker-head" id="tickerHead"><span class="tk-dot"></span>LEAGUE FEED<span class="tk-count">${tickerEvents.length}</span></button>
     <div class="ticker-list" id="tickerList"${tickerOpen ? '' : ' hidden'}>${tickerEvents.map((ev, idx) => `
       <div class="ticker-item${idx < newCount ? ' new' : ''}">
         <span class="tk-time">${escapeHtml(ev.when)}</span>
-        <span class="tk-text">${ev.who.map((w) => `<span class="tk-who">${escapeHtml(w.name)}</span> <span class="tk-owner">${escapeHtml(w.owner)}</span>`).join(', ')} &mdash; ${escapeHtml(ev.text)}</span>
+        <span class="tk-text">
+          <span class="tk-players">${ev.who.map(whoHtml).join('')}</span>
+          <span class="tk-play">${escapeHtml(ev.text)}</span>
+        </span>
       </div>`).join('')}</div>
   </div>`;
   document.getElementById('tickerHead').onclick = () => {
@@ -1759,8 +1859,8 @@ function harvestScoringPlays(summary){
     const ntext = ' ' + normalizeName(play.text || '') + ' ';
     const who = [];
     for(const r of rosterIndex){
-      if(r.norm && ntext.includes(' ' + r.norm + ' ') && !who.some((w) => w.name === r.name)){
-        who.push({ name: r.name, owner: r.owner });
+      if(r.norm && ntext.includes(' ' + r.norm + ' ') && !who.some((w) => w.pid === r.pid)){
+        who.push({ pid: r.pid, name: r.name, owner: r.owner });
       }
     }
     if(!who.length) continue;
@@ -1890,6 +1990,11 @@ async function refreshBoxScores(){
       const g = abbr ? espnCache.gamesByTeam[abbr] : null;
       if(g && g.eventId && g.state !== 'pre') needed.add(g.eventId);
     }
+    // Snapshot every player's points before the new box scores land, so the
+    // difference afterwards is exactly what these plays were worth.
+    const before = {};
+    for(const p of allPlayersIn(lineup.matchups)) before[p.id] = (computed[p.id] && computed[p.id].points) || 0;
+
     const freshEvents = [];
     await Promise.all([...needed].map(async (eventId) => {
       const existing = espnCache.boxByEvent[eventId];
@@ -1912,6 +2017,18 @@ async function refreshBoxScores(){
     patchDynamic();
     if(freshEvents.length){
       freshEvents.reverse(); // latest play first
+      // Attribute the points gained to the play that caused them — but only
+      // when a player shows up in exactly one new play this cycle. If two of
+      // their plays land in the same refresh the split is unknowable, so the
+      // row shows the running total alone rather than a made-up split.
+      const appearances = {};
+      for(const ev of freshEvents) for(const w of ev.who) appearances[w.pid] = (appearances[w.pid] || 0) + 1;
+      for(const ev of freshEvents){
+        for(const w of ev.who){
+          const gained = ((computed[w.pid] && computed[w.pid].points) || 0) - (before[w.pid] || 0);
+          if(appearances[w.pid] === 1 && gained > 0) w.delta = gained;
+        }
+      }
       pushTickerEvents(freshEvents, tickerPrimed);
     }
     tickerPrimed = true;

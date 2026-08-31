@@ -461,8 +461,17 @@ async function handleLiveScores(request, env) {
   const totalWeeks = countWeeks(fullSchedule);
   const rules = parseScoringRules(rulesData);
 
+  // MFL lets each owner set a franchise icon/logo; passing those through
+  // lets the scoreboard show real team logos instead of coloured initials.
+  // Not every franchise sets one, so this stays optional and the frontend
+  // falls back to initials per team rather than all-or-nothing.
   const franchiseNames = {};
-  for (const f of league.league.franchises.franchise) franchiseNames[f.id] = f.name;
+  const franchiseLogos = {};
+  for (const f of league.league.franchises.franchise) {
+    franchiseNames[f.id] = f.name;
+    const logo = f.icon || f.logo || null;
+    if (logo && /^https?:\/\//i.test(logo)) franchiseLogos[f.id] = logo;
+  }
 
   // Player lists come from liveScoring (which carries confirmed starter vs
   // bench), but that export is empty outside an active week — which would
@@ -532,13 +541,14 @@ async function handleLiveScores(request, env) {
     const name = franchiseNames[franchiseId] || `Franchise ${franchiseId}`;
     // Without liveScoring there's no starter designation to be had, so the
     // whole roster goes to bench rather than inventing a lineup nobody set.
-    if (!lineupConfirmed) return { franchiseId, team: name, starters: [], bench: all.map(toEntry) };
+    const logo = franchiseLogos[franchiseId] || null;
+    if (!lineupConfirmed) return { franchiseId, team: name, logo, starters: [], bench: all.map(toEntry) };
     // MFL's liveScoring players carry status "starter"/"nonstarter". Only an
     // explicit "nonstarter" goes to the bench: an absent/unknown status stays
     // in the lineup, so a surprise shape can't blank the whole board.
     const starters = all.filter((p) => p.status !== "nonstarter").map(toEntry);
     const bench = all.filter((p) => p.status === "nonstarter").map(toEntry);
-    return { franchiseId, team: name, starters, bench };
+    return { franchiseId, team: name, logo, starters, bench };
   }
 
   const matchups = extractMatchupsForWeek(fullSchedule, week)

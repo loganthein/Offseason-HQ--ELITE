@@ -95,7 +95,9 @@ async function main() {
   for (const p of players.players.player) {
     const isRookie = String(p.draft_year || "") === String(SEASON);
     if (isRookie) rookieCount++;
-    playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, rookie: isRookie };
+    // nflTeam feeds the live scoreboard's demo mode (generated in build.js)
+    // so it shows real players on their real NFL teams.
+    playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, rookie: isRookie, nflTeam: p.team || null };
   }
 
   const ktcMap = JSON.parse(fs.readFileSync(path.join(ROOT, "ktc_map.json"), "utf8"));
@@ -130,6 +132,7 @@ async function main() {
         acquired,
         designation,
         rookie: !!info.rookie,
+        nflTeam: info.nflTeam || null,
         ktcValue,
         adpRank,
       });
