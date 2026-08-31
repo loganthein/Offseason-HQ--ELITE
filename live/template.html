@@ -562,10 +562,10 @@ button.p-name:hover{ color:var(--blue); }
   font-size:9px;
   font-weight:700;
   letter-spacing:0.4px;
-  padding:3px 7px;
+  padding:3px 6px;
   border-radius:999px;
   flex-shrink:0;
-  min-width:28px;
+  min-width:34px;
   text-align:center;
 }
 .pos-tag.pos-QB{ background:color-mix(in srgb, var(--pos-qb) 16%, transparent); color:var(--pos-qb); }
@@ -574,6 +574,11 @@ button.p-name:hover{ color:var(--blue); }
 .pos-tag.pos-TE{ background:color-mix(in srgb, var(--pos-te) 16%, transparent); color:var(--pos-te); }
 .pos-tag.pos-D{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
 .pos-tag.pos-PK{ background:color-mix(in srgb, var(--ink-dim) 16%, transparent); color:var(--ink-dim); }
+/* Lineup-slot pills. DEF reuses the D/ST colour; the two flex slots are
+   deliberately neutral so they read as "any of several positions". */
+.pos-tag.pos-DEF{ background:color-mix(in srgb, var(--pos-d) 16%, transparent); color:var(--pos-d); }
+.pos-tag.pos-SFLX{ background:color-mix(in srgb, var(--blue) 15%, transparent); color:var(--blue-ink); letter-spacing:0; }
+.pos-tag.pos-FLX{ background:color-mix(in srgb, var(--ink-dim) 15%, transparent); color:var(--ink-dim); letter-spacing:0; }
 
 /* ---------- Player card modal ---------- */
 #playerModal:empty{ display:none; }
@@ -789,7 +794,7 @@ button.p-name:hover{ color:var(--blue); }
      don't have to shrink as far. */
   .starter-row{ padding:9px 4px; gap:3px; }
   .p-score{ min-width:27px; font-size:15.5px; }
-  .pos-tag{ min-width:20px; font-size:8px; padding:3px 3px; letter-spacing:0; }
+  .pos-tag{ min-width:28px; font-size:7.5px; padding:3px 2px; letter-spacing:0; }
 }
 @media (max-width: 480px){
   .wrap{ padding:18px 10px 60px; }
@@ -806,7 +811,7 @@ button.p-name:hover{ color:var(--blue); }
      fixed columns instead buys those characters back. */
   .p-name{ font-size:13px; }
   .p-score{ font-size:17px; min-width:32px; letter-spacing:-0.5px; }
-  .pos-tag{ min-width:24px; font-size:8.5px; padding:3px 5px; letter-spacing:0.2px; }
+  .pos-tag{ min-width:30px; font-size:8px; padding:3px 4px; letter-spacing:0; }
   .starter-row{ padding:9px 7px; gap:5px; border-radius:var(--r-sm); }
   .p-sub span, .p-sub button{ font-size:9.5px; }
   .ticker-item{ padding:9px 12px; font-size:11px; }
@@ -965,7 +970,7 @@ function renderDemo(){
   const WHEN = ['Q3 8:42', 'Q2 2:15', 'Q1 11:03', 'Q4 6:20'];
   tickerEvents = scorers.slice(0, 4).map((s, i) => ({
     when: WHEN[i % WHEN.length],
-    text: (s.p.nflTeam ? s.p.nflTeam + ': ' : '') + PLAYS[i % PLAYS.length](s.p.name),
+    text: (espnTeam(s.p.nflTeam) ? espnTeam(s.p.nflTeam) + ': ' : '') + PLAYS[i % PLAYS.length](s.p.name),
     who: [{ pid: s.p.id, name: s.p.name, owner: s.owner, delta: i % 2 === 0 ? 6 : 4.4 }],
   }));
   document.getElementById('banner').innerHTML = `<div class="banner info"><span><span class="dot"></span>Demo data &mdash; not live</span></div>`;
@@ -1509,7 +1514,7 @@ function playerBlock(p, side){
       <button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>
     </div>
     <div class="p-sub">
-      <span class="p-team">${nflLogo(p.nflTeam, 'nfl-logo')}${escapeHtml(p.nflTeam || '')}</span>
+      <span class="p-team">${nflLogo(p.nflTeam, 'nfl-logo')}${escapeHtml(espnTeam(p.nflTeam) || '')}</span>
       <button type="button" class="game-link js-player-card" data-ctx="${escapeHtml(p.id)}" data-player-id="${escapeHtml(p.id)}" hidden></button>
       <span data-stat="${escapeHtml(p.id)}" hidden></span>
     </div>
@@ -1561,15 +1566,49 @@ window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = set
 // Re-fit once the fonts are actually ready.
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitPlayerNames());
 
-function starterRow(homePlayer, awayPlayer){
-  const pos = (homePlayer || awayPlayer).pos || '';
+// The league's starting lineup, in the order it should read on the board.
+// SFLX takes any of QB/RB/WR/TE; FLX takes RB/WR/TE. Everyone not slotted
+// here is bench.
+const LINEUP_SLOTS = [
+  { label: 'QB',   accepts: ['QB'] },
+  { label: 'RB',   accepts: ['RB'] },
+  { label: 'RB',   accepts: ['RB'] },
+  { label: 'WR',   accepts: ['WR'] },
+  { label: 'WR',   accepts: ['WR'] },
+  { label: 'TE',   accepts: ['TE'] },
+  { label: 'SFLX', accepts: ['QB','RB','WR','TE'] },
+  { label: 'FLX',  accepts: ['RB','WR','TE'] },
+  { label: 'DEF',  accepts: ['D'] },
+];
+
+// Fills the slots from a team's confirmed starters. Dedicated slots are
+// filled before the flex ones so a lone RB can't get stranded in FLX while
+// the RB slot sits empty. A slot with nobody eligible renders empty rather
+// than pulling someone out of position.
+//
+// `extra` is anyone MFL calls a starter who didn't fit the nine slots. It
+// should normally be empty, but those players are still shown (after the
+// slots) rather than silently dropped — MFL's starter list is what scores,
+// so a player who vanished from the board while counting toward the total
+// would be worse than an unexpected extra row.
+function slotLineup(starters){
+  const pool = [...(starters || [])];
+  const filled = LINEUP_SLOTS.map((slot) => {
+    const idx = pool.findIndex((p) => slot.accepts.includes(p.pos));
+    return { label: slot.label, player: idx === -1 ? null : pool.splice(idx, 1)[0] };
+  });
+  return { filled, extra: pool };
+}
+
+function starterRow(homePlayer, awayPlayer, slotLabel){
+  const label = slotLabel || (homePlayer || awayPlayer || {}).pos || '';
   const scoreEl = (p) => p
     ? `<span class="p-score" data-score="${escapeHtml(p.id)}">0.0</span>`
     : '<span class="p-score">&mdash;</span>';
   return `<div class="starter-row">
     ${homePlayer ? playerBlock(homePlayer, 'home') : '<div class="p-block home"></div>'}
     ${scoreEl(homePlayer)}
-    <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
+    <span class="pos-tag pos-${escapeHtml(label)}">${escapeHtml(label)}</span>
     ${scoreEl(awayPlayer)}
     ${awayPlayer ? playerBlock(awayPlayer, 'away') : '<div class="p-block away"></div>'}
   </div>`;
@@ -1580,11 +1619,22 @@ function renderMatchup(m, i){
   // whole rosters with no starters, so say that plainly instead of dressing
   // a roster up as a set lineup.
   const unset = lineup && lineup.lineupConfirmed === false;
-  const rowCount = Math.max(m.home.starters.length, m.away.starters.length);
-  const rows = Array.from({ length: rowCount }, (_, r) => starterRow(m.home.starters[r], m.away.starters[r])).join('');
+  const homeLine = slotLineup(m.home.starters);
+  const awayLine = slotLineup(m.away.starters);
+  let rows = LINEUP_SLOTS.map((slot, r) =>
+    starterRow(homeLine.filled[r].player, awayLine.filled[r].player, slot.label)).join('');
+  // Any starter that didn't fit a slot still gets a row, labelled by position.
+  const extraCount = Math.max(homeLine.extra.length, awayLine.extra.length);
+  for(let r = 0; r < extraCount; r++){
+    const h = homeLine.extra[r], a = awayLine.extra[r];
+    rows += starterRow(h, a, (h || a).pos || '');
+  }
   const benchCount = Math.max((m.home.bench || []).length, (m.away.bench || []).length);
   const benchRows = benchCount
-    ? Array.from({ length: benchCount }, (_, r) => starterRow((m.home.bench || [])[r], (m.away.bench || [])[r])).join('')
+    ? Array.from({ length: benchCount }, (_, r) => {
+        const h = (m.home.bench || [])[r], a = (m.away.bench || [])[r];
+        return starterRow(h, a, (h || a).pos || '');
+      }).join('')
     : '';
   const teamHtml = (side, key) => `
       <div class="matchup-team ${key}" data-mteam="${i}-${key}">
@@ -1846,7 +1896,7 @@ function playerCardHtml(p, c){
           <div class="pm-name">${escapeHtml(p.name)}</div>
           <div class="pm-meta">
             <span class="pos-tag pos-${escapeHtml(pos)}">${escapeHtml(pos)}</span>
-            <span class="pm-team">${nflLogo(p.nflTeam, 'pm-nfl-logo')}${escapeHtml(p.nflTeam || 'FA')}</span>
+            <span class="pm-team">${nflLogo(p.nflTeam, 'pm-nfl-logo')}${escapeHtml(espnTeam(p.nflTeam) || 'FA')}</span>
           </div>
         </div>
         <div class="pm-points">${(c.points || 0).toFixed(1)}<span>PTS</span></div>

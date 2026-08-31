@@ -66,10 +66,9 @@ function buildDemoMatchups() {
     if (!byTeam.has(r.team)) byTeam.set(r.team, []);
     byTeam.get(r.team).push(r);
   }
-  // A plausible starting lineup for a 14-man Superflex-ish roster; whatever
-  // the slots can't absorb becomes bench. Positions come straight from MFL,
-  // so a position the league doesn't use simply never appears.
-  const SLOTS = ['QB', 'QB', 'RB', 'RB', 'WR', 'WR', 'WR', 'TE', 'RB/WR/TE', 'D'];
+  // The league's real starting lineup. Must stay in step with LINEUP_SLOTS
+  // in live/template.html — this generates the demo those slots render.
+  const SLOTS = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'QB/RB/WR/TE', 'RB/WR/TE', 'D'];
   const CONTEXTS = [
     ['Final · 27-20', false, 'post'], ['Q3 8:42', true, 'in'], ['● Q3 8:42', true, 'in'],
     ['Final · 31-24', false, 'post'], ['Q2 2:15', true, 'in'], ['Pregame', false, 'pre'],
@@ -95,7 +94,7 @@ function buildDemoMatchups() {
       const pool = [...byTeam.get(name)];
       const starters = [];
       for (const slot of SLOTS) {
-        const want = slot === 'RB/WR/TE' ? ['RB', 'WR', 'TE'] : [slot];
+        const want = slot.includes('/') ? slot.split('/') : [slot];
         const idx = pool.findIndex((p) => want.includes(p.pos));
         if (idx !== -1) starters.push(pool.splice(idx, 1)[0]);
       }
