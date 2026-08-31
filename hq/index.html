@@ -967,7 +967,18 @@ function populateTeamFilter(){
    em-dash rather than showing a number we don't actually have. */
 const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
 const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
-const MFL_TO_ESPN_TEAM = { ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH" };
+// MFL's team codes are its own three-letter set and do NOT match ESPN's.
+// Getting this wrong is silent and expensive: an unmapped code matches no
+// ESPN game, so those players get no box score and score zero all Sunday.
+// Verified against every code present in this league's real rosters — the
+// six three-letter ones below (GBP/KCC/NEP/NOS/SFO/TBB) were unmapped and
+// cover roughly a fifth of rostered players. "FA" is a free agent, not a
+// team, and resolves to no game at all.
+const MFL_TO_ESPN_TEAM = {
+  ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH",
+  GBP:"GB", KCC:"KC", NEP:"NE", NOS:"NO", SFO:"SF", TBB:"TB",
+};
+const MFL_NO_TEAM = new Set(["FA", "FA*", ""]);
 
 let weekProjections = null;   // { mflPlayerId: projectedPoints }
 let weekGames = null;         // { NFL_ABBR: {opp, home, kickoff, state, score} }
@@ -987,8 +998,9 @@ function gameCell(row){
   if(!weekGames) return '<span class="note-cell">&mdash;</span>';
   // No NFL team on file is "we don't know", not "bye" — only a player whose
   // team is known and simply has no game this week is actually on a bye.
-  const abbr = row.nflTeam ? (MFL_TO_ESPN_TEAM[row.nflTeam] || row.nflTeam) : null;
-  if(!abbr) return '<span class="note-cell">&mdash;</span>';
+  const abbr = (row.nflTeam && !MFL_NO_TEAM.has(row.nflTeam))
+    ? (MFL_TO_ESPN_TEAM[row.nflTeam] || row.nflTeam) : null;
+  if(!abbr) return '<span class="note-cell">Free agent</span>';
   const g = weekGames[abbr];
   if(!g) return '<span class="note-cell">Bye</span>';
   const vs = (g.home ? 'vs ' : '@ ') + g.opp;

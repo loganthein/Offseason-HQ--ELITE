@@ -869,8 +869,18 @@ const MFL_PLATINUM_URL = "myfantasyleague://league/31492";
 // scoring rules from MFL; every point value below is computed in this file.
 const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
 const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary";
-// MFL still uses some legacy NFL abbreviations that differ from ESPN's.
-const MFL_TO_ESPN_TEAM = { ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH" };
+// MFL's team codes are its own three-letter set and do NOT match ESPN's.
+// Getting this wrong is silent and expensive: an unmapped code matches no
+// ESPN game, so those players get no box score and score zero all Sunday.
+// Verified against every code present in this league's real rosters — the
+// six three-letter ones below (GBP/KCC/NEP/NOS/SFO/TBB) were unmapped and
+// cover roughly a fifth of rostered players. "FA" is a free agent, not a
+// team, and resolves to no game at all.
+const MFL_TO_ESPN_TEAM = {
+  ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH",
+  GBP:"GB", KCC:"KC", NEP:"NE", NOS:"NO", SFO:"SF", TBB:"TB",
+};
+const MFL_NO_TEAM = new Set(["FA", "FA*", ""]);
 const POS_TO_RULE_KEY = { QB:"QB", RB:"RB", WR:"WR", TE:"TE", PK:"PK", D:"Def" };
 
 /* ---------- Demo mode ----------
@@ -1332,7 +1342,7 @@ function fracRemaining(game){
 
 /* ---------- Per-player point computation ---------- */
 function computePoints(player, gamesByTeam, rules){
-  const espnAbbr = player.nflTeam ? (MFL_TO_ESPN_TEAM[player.nflTeam] || player.nflTeam) : null;
+  const espnAbbr = espnTeam(player.nflTeam);
   const game = espnAbbr ? gamesByTeam[espnAbbr] : null;
   const ruleKey = POS_TO_RULE_KEY[player.pos] || player.pos;
   const eventRules = rules && rules[ruleKey];
@@ -1471,9 +1481,16 @@ function teamAvatar(side, cls){
   return `<span class="${cls}" style="background:${avatarColor(side.team)}">${initialsHtml}</span>`;
 }
 
+// One place that turns an MFL team code into an ESPN one, so the mapping
+// can't drift between the scoreboard, the logos and the game lookup.
+function espnTeam(abbr){
+  if(!abbr || MFL_NO_TEAM.has(abbr)) return null;
+  return MFL_TO_ESPN_TEAM[abbr] || abbr;
+}
+
 // NFL crest for a player's real team, from ESPN's public logo CDN.
 function nflLogo(abbr, cls){
-  const espn = abbr ? (MFL_TO_ESPN_TEAM[abbr] || abbr) : null;
+  const espn = espnTeam(abbr);
   if(!espn) return '';
   return `<img class="${cls}" src="https://a.espncdn.com/i/teamlogos/nfl/500/${escapeHtml(espn.toLowerCase())}.png" alt="" loading="lazy" onerror="this.remove()">`;
 }
@@ -2119,7 +2136,7 @@ async function refreshBoxScores(){
   try{
     const needed = new Set();
     for(const p of allPlayersIn(lineup.matchups)){
-      const abbr = p.nflTeam ? (MFL_TO_ESPN_TEAM[p.nflTeam] || p.nflTeam) : null;
+      const abbr = espnTeam(p.nflTeam);
       const g = abbr ? espnCache.gamesByTeam[abbr] : null;
       if(g && g.eventId && g.state !== 'pre') needed.add(g.eventId);
     }
