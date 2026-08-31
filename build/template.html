@@ -707,24 +707,8 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
   <!-- ROSTER TAB -->
   <section id="tab-roster" class="tab-panel">
     <div class="section-title">Roster &amp; Keepers</div>
-    <p class="subnote">All 14 rosters with keeper cost math built in.</p>
-
-    <div class="section-title" style="font-size:22px;">Best Keeper Value, Leaguewide</div>
-    <p class="subnote">The top 30 rostered players by keeper value, across all 14 teams &mdash; not grouped by position. ADP is KeepTradeCut's crowdsourced Superflex / .5 PPR dynasty rank, converted to a round.pick for this league's 14 teams. Nobody's keeper picks for the upcoming draft are locked in yet, so this covers everyone, not just last season's keepers. See "How We Score Keeper Value" on the Rules tab for how it's calculated.</p>
-    <div class="table-scroll" style="margin-bottom:30px;">
-      <table class="lean-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Kept Rd</th>
-            <th>ADP</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody id="valueRankBody"></tbody>
-      </table>
-    </div>
+    <p class="subnote">All 14 post-draft rosters, with this week's projection and NFL matchup alongside each player's keeper cost. Projections and the schedule are pulled live when the page loads, so they follow the season rather than the last build.</p>
+    <p class="subnote" id="weekDataStatus" style="font-family:'DM Mono',monospace; font-size:11px;">Loading this week&rsquo;s data&hellip;</p>
 
     <div class="toolbar">
       <input id="search" type="text" placeholder="Search player or team&hellip;" oninput="renderRosterTable()">
@@ -750,8 +734,8 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
             <th>Player</th>
             <th>Kept?</th>
             <th class="sortable" onclick="sortRosterBy('cost')">Kept Rd<span class="arrow" id="arrow-cost"></span></th>
-            <th class="sortable" onclick="sortRosterBy('adp')">ADP<span class="arrow" id="arrow-adp"></span></th>
-            <th class="sortable" onclick="sortRosterBy('tag')">Value<span class="arrow" id="arrow-tag"></span></th>
+            <th class="sortable" onclick="sortRosterBy('proj')">Proj<span class="arrow" id="arrow-proj"></span></th>
+            <th>Game</th>
           </tr>
         </thead>
         <tbody id="rosterBody"></tbody>
@@ -816,12 +800,6 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <input id="finderSearch" type="text" placeholder="Search a player name&hellip;" oninput="renderFinderSearch()" style="width:100%; max-width:360px;">
     <div id="finderSearchResults" style="margin-top:10px;"></div>
 
-    <div class="section-title" style="font-size:22px; margin-top:32px;">Similar Value Finder</div>
-    <p class="subnote">Pick a player &mdash; see who else sits at roughly the same trade value. Uses KTC market value where available, falling back to keeper cost otherwise.</p>
-    <input id="similarSearch" type="text" placeholder="Find a player to compare&hellip;" oninput="renderSimilarSearch()" style="width:100%; max-width:360px;">
-    <div id="similarSearchResults" style="margin-top:10px;"></div>
-    <div id="similarValueResults" style="margin-top:10px;"></div>
-
     <div class="section-title" style="font-size:22px; margin-top:32px;">Keep Planner</div>
     <p class="subnote">Pick your team and check off up to 2 keepers to see what each would cost.</p>
     <div class="toolbar">
@@ -874,30 +852,6 @@ function computeKeeper(row){
    round.pick using this league's actual team count \u2014 i.e. "where he'd go in a startup draft
    with these 14 teams today." That's directly comparable to the keeper round he actually costs. */
 const LEAGUE_TEAMS = 14;
-function adpInfo(row){
-  if(row.adpRank == null) return null;
-  const round = Math.ceil(row.adpRank / LEAGUE_TEAMS);
-  const pick = ((row.adpRank - 1) % LEAGUE_TEAMS) + 1;
-  return { rank: row.adpRank, round, pick, label: round + '.' + String(pick).padStart(2,'0') };
-}
-function roundsSaved(row){
-  const adp = adpInfo(row);
-  if(!adp || !row.round) return null;
-  return row.round - adp.round;
-}
-function valueTag(saved){
-  if(saved == null) return null;
-  if(saved <= -2) return {label:'Overpay', cls:'val-overpay'};
-  if(saved <= 0) return {label:'No Real Edge', cls:'val-noedge'};
-  if(saved <= 2) return {label:'Fair Value', cls:'val-fair'};
-  if(saved <= 4) return {label:'Good Value', cls:'val-good'};
-  return {label:'Elite Value', cls:'val-elite'};
-}
-function valueBadge(row){
-  const tag = valueTag(roundsSaved(row));
-  if(!tag) return '<span class="badge b-none">&mdash;</span>';
-  return `<span class="badge ${tag.cls}">${tag.label}</span>`;
-}
 function fmtSaved(saved){
   if(saved == null) return '&mdash;';
   if(saved === 0) return 'even';
@@ -1005,6 +959,95 @@ function populateTeamFilter(){
   sel.value = current;
 }
 
+/* ---------- Live week data: projections + NFL schedule ----------
+   Both change every week, so they're fetched at page load rather than baked
+   into the build — a static snapshot would be stale within days. Projections
+   come from the Worker (which reads MFL's projectedScores); the schedule
+   comes straight from ESPN, which is blocked from the Worker's IPs but fine
+   from a browser. Either can be missing, and every cell degrades to an
+   em-dash rather than showing a number we don't actually have. */
+const LIVE_API_URL = "https://elite-league-chat.loganthein.workers.dev/api/live-scores";
+const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
+const MFL_TO_ESPN_TEAM = { ARZ:"ARI", BLT:"BAL", CLV:"CLE", HST:"HOU", JAC:"JAX", LVR:"LV", WAS:"WSH" };
+
+let weekProjections = null;   // { mflPlayerId: projectedPoints }
+let weekGames = null;         // { NFL_ABBR: {opp, home, kickoff, state, score} }
+let weekNumber = null;
+
+function projFor(row){
+  if(!weekProjections || !row.mflId) return null;
+  const v = weekProjections[row.mflId];
+  return typeof v === 'number' ? v : null;
+}
+function projCell(row){
+  const v = projFor(row);
+  if(v == null) return '<span class="note-cell">&mdash;</span>';
+  return `<b>${v.toFixed(1)}</b>`;
+}
+function gameCell(row){
+  if(!weekGames) return '<span class="note-cell">&mdash;</span>';
+  // No NFL team on file is "we don't know", not "bye" — only a player whose
+  // team is known and simply has no game this week is actually on a bye.
+  const abbr = row.nflTeam ? (MFL_TO_ESPN_TEAM[row.nflTeam] || row.nflTeam) : null;
+  if(!abbr) return '<span class="note-cell">&mdash;</span>';
+  const g = weekGames[abbr];
+  if(!g) return '<span class="note-cell">Bye</span>';
+  const vs = (g.home ? 'vs ' : '@ ') + g.opp;
+  if(g.state === 'post') return `${vs} &middot; Final ${g.score}`;
+  if(g.state === 'in') return `${vs} &middot; <b style="color:var(--red-ink);">Live</b>`;
+  return `${vs} &middot; ${g.kickoff}`;
+}
+
+async function loadWeekData(){
+  const status = document.getElementById('weekDataStatus');
+  try{
+    const res = await fetch(LIVE_API_URL);
+    const data = await res.json();
+    weekNumber = data.week ?? null;
+    // An empty object is not "loaded" — MFL returns nothing here until the
+    // week's projections actually exist.
+    const proj = data.projections;
+    weekProjections = (proj && Object.keys(proj).length) ? proj : null;
+  }catch(e){ console.error('projection fetch failed', e); }
+
+  try{
+    const season = new Date().getFullYear();
+    const wk = weekNumber || 1;
+    const sb = await fetch(`${ESPN_SCOREBOARD}?week=${wk}&year=${season}&seasontype=2`).then(r=>r.json());
+    weekGames = {};
+    for(const ev of sb.events || []){
+      const comp = ev.competitions && ev.competitions[0];
+      if(!comp) continue;
+      const st = (comp.status && comp.status.type) || {};
+      const [a,b] = comp.competitors || [];
+      if(!a || !b) continue;
+      const kickoff = ev.date ? new Date(ev.date).toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'}) : '';
+      const put = (self, opp) => {
+        const ab = self.team && self.team.abbreviation;
+        if(!ab) return;
+        weekGames[ab] = {
+          opp: (opp.team && opp.team.abbreviation) || '?',
+          home: self.homeAway === 'home',
+          kickoff,
+          state: st.state || 'pre',
+          score: `${Number(self.score)||0}-${Number(opp.score)||0}`,
+        };
+      };
+      put(a,b); put(b,a);
+    }
+  }catch(e){ console.error('schedule fetch failed', e); }
+
+  if(status){
+    const bits = [];
+    bits.push(weekNumber ? `Week ${weekNumber}` : 'Current week');
+    bits.push(weekProjections ? 'projections loaded' : 'projections unavailable');
+    bits.push(weekGames && Object.keys(weekGames).length ? 'schedule loaded' : 'schedule unavailable');
+    status.textContent = bits.join(' \u00b7 ');
+  }
+  renderRosterTable();
+  renderTeamBreakdown();
+}
+
 let rosterSort = {field: null, dir: 1};
 function sortRosterBy(field){
   if(rosterSort.field !== field){ rosterSort.field = field; rosterSort.dir = 1; }
@@ -1016,7 +1059,7 @@ function clearRosterSort(){
   rosterSort = {field: null, dir: 1};
   renderRosterTable();
 }
-const SORT_LABELS = {team:'team', pos:'position', cost:'keeper cost', adp:'ADP', tag:'value tier'};
+const SORT_LABELS = {team:'team', pos:'position', cost:'keeper cost', proj:'projection'};
 function updateSortUI(){
   Object.keys(SORT_LABELS).forEach(f=>{
     const arrow = document.getElementById('arrow-'+f);
@@ -1040,30 +1083,6 @@ function updateSortUI(){
   } else {
     status.innerHTML = '';
   }
-}
-
-function renderValueRankings(){
-  const body = document.getElementById('valueRankBody');
-  const ranked = roster
-    .map(r => ({...r, saved: roundsSaved(r)}))
-    .filter(r => r.saved != null)
-    .sort((a,b) => b.saved - a.saved)
-    .slice(0, 30);
-
-  body.innerHTML = ranked.map((r, i) => {
-    const pc = posClass(r.pos);
-    const adp = adpInfo(r);
-    return `<tr>
-      <td class="cost-cell">${i+1}</td>
-      <td>
-        <div>${r.player} ${rookieTag(r)}</div>
-        <div class="note-cell"><span class="pos-tag ${pc}">${posLabel(r.pos)}</span> ${r.team}</div>
-      </td>
-      <td><span class="cost-cell cost-ok">Rd ${r.round}</span></td>
-      <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
-      <td>${valueBadge(r)}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="5" class="empty-hint" style="border:none;">No players with a known ADP yet.</td></tr>';
 }
 
 function renderRosterTable(){
@@ -1090,21 +1109,13 @@ function renderRosterTable(){
     rows.sort((a,b) => posLabel(a.pos).localeCompare(posLabel(b.pos)) * rosterSort.dir || a.player.localeCompare(b.player));
   } else if(rosterSort.field === 'cost'){
     rows.sort((a,b) => (computeKeeper(a).cost - computeKeeper(b).cost) * rosterSort.dir);
-  } else if(rosterSort.field === 'adp'){
+  } else if(rosterSort.field === 'proj'){
     rows.sort((a,b) => {
-      const aa = adpInfo(a), ab = adpInfo(b);
-      if(!aa && !ab) return 0;
-      if(!aa) return 1;
-      if(!ab) return -1;
-      return (aa.rank - ab.rank) * rosterSort.dir;
-    });
-  } else if(rosterSort.field === 'tag'){
-    const TAG_RANK = {'Overpay':0, 'No Real Edge':1, 'Fair Value':2, 'Good Value':3, 'Elite Value':4};
-    rows.sort((a,b) => {
-      const ta = valueTag(roundsSaved(a)), tb = valueTag(roundsSaved(b));
-      const ra = ta ? TAG_RANK[ta.label] : -1;
-      const rb = tb ? TAG_RANK[tb.label] : -1;
-      return (ra - rb) * rosterSort.dir;
+      const pa = projFor(a), pb = projFor(b);
+      if(pa == null && pb == null) return 0;
+      if(pa == null) return 1;   // unprojected players sink to the bottom either way
+      if(pb == null) return -1;
+      return (pa - pb) * rosterSort.dir;
     });
   }
 
@@ -1113,7 +1124,6 @@ function renderRosterTable(){
   rows.forEach(row => {
     const result = computeKeeper(row);
     const pc = posClass(row.pos);
-    const adp = adpInfo(row);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="pos-accent ${pc} note-cell">${row.team}</td>
@@ -1121,8 +1131,8 @@ function renderRosterTable(){
       <td>${row.player} ${rookieTag(row)}</td>
       <td>${badge(row.designation)}</td>
       <td><span class="cost-cell cost-ok">Rd ${result.cost}</span></td>
-      <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
-      <td>${valueBadge(row)}</td>
+      <td class="val-cell">${projCell(row)}</td>
+      <td class="note-cell">${gameCell(row)}</td>
     `;
     body.appendChild(tr);
   });
@@ -1223,12 +1233,14 @@ function renderTeamOverview(){
   const acceleratedCount = teamRoster.filter(r=>r.designation === 'K2').length;
   const years = [...new Set(teamPicks.map(p=>p.year))].sort();
 
-  const ranked = teamRoster.map(r=>({...r, saved: roundsSaved(r)}))
+  // Highest projected first while this week's data is loaded; falls back to
+  // keeper cost so the table still has a sensible order before it arrives.
+  const ranked = teamRoster.map(r=>({...r, proj: projFor(r)}))
     .sort((a,b)=>{
-      if(a.saved==null && b.saved==null) return 0;
-      if(a.saved==null) return 1;
-      if(b.saved==null) return -1;
-      return b.saved - a.saved;
+      if(a.proj == null && b.proj == null) return computeKeeper(a).cost - computeKeeper(b).cost;
+      if(a.proj == null) return 1;
+      if(b.proj == null) return -1;
+      return b.proj - a.proj;
     });
 
   content.innerHTML = `
@@ -1239,22 +1251,21 @@ function renderTeamOverview(){
     </div>
 
     <div class="section-title" style="font-size:22px;">Keeper Board</div>
-    <p class="subnote">Every rostered player, best value first &mdash; not just who was kept last year. ADP is where he'd actually go in a fresh Superflex/.5 PPR startup draft with these 14 teams.</p>
+    <p class="subnote">Every rostered player, highest projected first, with this week's NFL matchup and his keeper cost for next offseason.</p>
     <div class="table-scroll">
       <table class="lean-table team-keeper-table">
-        <thead><tr><th>Player</th><th>Kept Rd</th><th>ADP</th><th>Value</th></tr></thead>
+        <thead><tr><th>Player</th><th>Kept Rd</th><th>Proj</th><th>Game</th></tr></thead>
         <tbody>
           ${ranked.map(r=>{
             const pc = posClass(r.pos);
-            const adp = adpInfo(r);
             return `<tr>
               <td>
                 <div>${r.player} ${rookieTag(r)}</div>
                 <div class="note-cell"><span class="pos-tag ${pc}">${posLabel(r.pos)}</span> ${badge(r.designation)}</div>
               </td>
               <td><span class="cost-cell cost-ok">Rd ${r.round}</span></td>
-              <td class="val-cell">${adp ? adp.label : '&mdash;'}</td>
-              <td>${valueBadge(r)}</td>
+              <td class="val-cell">${projCell(r)}</td>
+              <td class="note-cell">${gameCell(r)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1289,60 +1300,9 @@ function renderFinderSearch(){
       <span class="oname">${posLabel(r.pos)} ${r.player} ${rookieTag(r)}</span>
       <span style="color:var(--ink-faint); font-size:12px;">${r.team}</span>
       ${badge(r.designation)}
-      <span class="ocost">Rd ${kc.cost}${r.ktcValue!=null ? ' &middot; '+r.ktcValue.toLocaleString() : ''}</span>
+      <span class="ocost">Rd ${kc.cost}${projFor(r)!=null ? ' &middot; proj '+projFor(r).toFixed(1) : ''}</span>
     </div>`;
   }).join('');
-}
-
-function renderSimilarSearch(){
-  const q = (document.getElementById('similarSearch').value || '').trim().toLowerCase();
-  const el = document.getElementById('similarSearchResults');
-  document.getElementById('similarValueResults').innerHTML = '';
-  if(!q){ el.innerHTML = ''; return; }
-  const matches = roster.map((r,i)=>({...r, idx:i})).filter(r => (r.player||'').toLowerCase().includes(q));
-  if(!matches.length){ el.innerHTML = '<div class="empty-hint">No one matches that.</div>'; return; }
-  el.innerHTML = matches.slice(0,15).map(r => `
-    <span class="pick-chip clickable" onclick="selectSimilarPlayer(${r.idx})">${r.player} <span style="color:var(--ink-faint);">(${r.team})</span></span>
-  `).join(' ');
-}
-
-function selectSimilarPlayer(idx){
-  const player = roster[idx];
-  const el = document.getElementById('similarValueResults');
-  const useValue = player.ktcValue !== null && player.ktcValue !== undefined;
-  const candidates = roster.map((r,i)=>({...r, idx:i})).filter(r => r.idx !== idx && r.team !== player.team);
-
-  let scored;
-  if(useValue){
-    scored = candidates.filter(r => r.ktcValue !== null && r.ktcValue !== undefined)
-      .map(r => ({...r, diff: Math.abs(r.ktcValue - player.ktcValue)}))
-      .sort((a,b) => a.diff - b.diff)
-      .slice(0, 10);
-  } else {
-    const cost0 = computeKeeper(player).cost || 0;
-    scored = candidates
-      .map(r => ({...r, diff: Math.abs(computeKeeper(r).cost - cost0)}))
-      .sort((a,b) => a.diff - b.diff)
-      .slice(0, 10);
-  }
-
-  const headerValue = useValue ? `market value ${player.ktcValue.toLocaleString()}` : `keeper cost Rd ${computeKeeper(player).cost}`;
-  el.innerHTML = `
-    <div class="pos-group">
-      <h4>Similar to ${player.player} (${player.team}) &mdash; ${headerValue}</h4>
-      ${!useValue ? '<p class="subnote" style="margin-top:0;">No market value on file for this player &mdash; comparing by keeper cost instead.</p>' : ''}
-      ${scored.length ? scored.map(r => {
-        const kc = computeKeeper(r);
-        const valText = useValue ? (r.ktcValue!=null ? 'market '+r.ktcValue.toLocaleString() : '\u2014') : `Rd ${kc.cost}`;
-        return `<div class="overview-row">
-          <span class="oname">${posLabel(r.pos)} ${r.player}</span>
-          <span style="color:var(--ink-faint); font-size:12px;">${r.team}</span>
-          ${badge(r.designation)}
-          <span class="ocost">${valText}</span>
-        </div>`;
-      }).join('') : '<div class="empty-hint">Nothing comparable on file yet.</div>'}
-    </div>
-  `;
 }
 
 function populatePlannerTeamSelect(){
@@ -1371,24 +1331,20 @@ function toggleKeep(idx){
 
 function renderKeepPlannerContent(team){
   const el = document.getElementById('plannerContent');
-  const teamRoster = roster.map((r,i)=>({...r, idx:i, saved: roundsSaved(r)})).filter(r=>r.team===team)
-    .sort((a,b)=>{
-      if(a.saved==null && b.saved==null) return 0;
-      if(a.saved==null) return 1;
-      if(b.saved==null) return -1;
-      return b.saved - a.saved;
-    });
+  // Cheapest keeper cost first — the planner is about what a keeper costs,
+  // so that's the useful order now that value tiers are gone.
+  const teamRoster = roster.map((r,i)=>({...r, idx:i})).filter(r=>r.team===team)
+    .sort((a,b)=> computeKeeper(a).cost - computeKeeper(b).cost || a.player.localeCompare(b.player));
 
   const rows = teamRoster.map(r => {
     const kc = computeKeeper(r);
-    const adp = adpInfo(r);
     const checked = plannerKeeps.has(r.idx);
     const atCap = plannerKeeps.size >= 2 && !checked;
     return `<div class="overview-row">
       <input type="checkbox" ${checked?'checked':''} ${atCap?'disabled':''} onchange="toggleKeep(${r.idx})">
       <span class="oname">${posLabel(r.pos)} ${r.player}</span>
       ${badge(r.designation)}
-      <span class="ocost">Rd ${kc.cost} &middot; ADP ${adp ? adp.label : '&mdash;'} ${valueBadge(r)}</span>
+      <span class="ocost">Rd ${kc.cost}${projFor(r)!=null ? ' &middot; proj '+projFor(r).toFixed(1) : ''}</span>
     </div>`;
   }).join('');
 
@@ -1403,13 +1359,47 @@ function populateBreakdownTeamSelect(){
   if(teams.includes(current)) sel.value = current;
 }
 
+// Computed from the current roster every time it renders, rather than read
+// from hand-written notes. The old prose was pre-draft keeper analysis keyed
+// by team name, so it went stale the moment the draft ran — and silently
+// vanished for the two teams that had since been renamed.
+const IDEAL = { QB: 2, RB: 4, WR: 5, TE: 1, D: 1 };
 function renderTeamBreakdown(){
   const team = document.getElementById('breakdownTeamSelect').value;
   const el = document.getElementById('breakdownContent');
-  if(!team){ el.innerHTML = '<span class="empty-hint" style="background:none; border:none; padding:0;">Choose a team above to read their breakdown.</span>'; return; }
-  const note = TEAM_NOTES[team];
-  el.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:8px;">${team}</div>` +
-    (note ? `<p style="margin:0; color:var(--ink-dim); font-size:14px;">${note}</p>` : '<span class="empty-hint" style="background:none; border:none; padding:0;">No breakdown written for this team yet.</span>');
+  if(!team){ el.innerHTML = '<span class="empty-hint" style="background:none; border:none; padding:0;">Choose a team above to see their breakdown.</span>'; return; }
+  const squad = roster.filter(r => r.team === team);
+  if(!squad.length){ el.innerHTML = '<span class="empty-hint" style="background:none; border:none; padding:0;">No roster data for this team.</span>'; return; }
+
+  const byPos = {};
+  for(const r of squad) (byPos[r.pos] ||= []).push(r);
+  const counts = Object.keys(IDEAL).map(pos => ({ pos, n: (byPos[pos]||[]).length, want: IDEAL[pos] }));
+  const thin = counts.filter(c => c.n < c.want);
+  const rookies = squad.filter(r => r.rookie);
+  const keepers = squad.filter(r => r.designation === 'K1' || r.designation === 'K2');
+
+  // Projection-aware when the week's data has loaded; silent about it when not.
+  const projected = squad.map(r => ({ r, p: projFor(r) })).filter(x => x.p != null).sort((a,b) => b.p - a.p);
+  const projTotal = projected.reduce((sum, x) => sum + x.p, 0);
+
+  const chip = (label, val) => `<span class="pos-tag" style="margin-right:6px;">${label} ${val}</span>`;
+  const list = (arr, n) => arr.slice(0, n).map(r => `${r.player} <span class="note-cell">(${posLabel(r.pos)})</span>`).join(', ');
+
+  el.innerHTML = `
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:8px;">${team}</div>
+    <div style="margin-bottom:10px;">${counts.map(c => chip(posLabel(c.pos), c.n)).join('')}</div>
+    <p style="margin:0 0 8px; color:var(--ink-dim); font-size:14px;">
+      ${squad.length} rostered${keepers.length ? ` &middot; ${keepers.length} keeper${keepers.length===1?'':'s'}` : ''}${rookies.length ? ` &middot; ${rookies.length} rookie${rookies.length===1?'':'s'}` : ''}.
+      ${thin.length
+        ? `Thin at ${thin.map(c => `<b>${posLabel(c.pos)}</b> (${c.n})`).join(', ')} against a typical starting lineup.`
+        : 'Every starting slot is covered with depth behind it.'}
+    </p>
+    ${projected.length ? `<p style="margin:0 0 8px; color:var(--ink-dim); font-size:14px;">
+      Projected <b>${projTotal.toFixed(1)}</b> across ${projected.length} projected players this week.
+      Top: ${projected.slice(0,3).map(x => `${x.r.player} <b>${x.p.toFixed(1)}</b>`).join(', ')}.
+    </p>` : ''}
+    ${rookies.length ? `<p style="margin:0; color:var(--ink-faint); font-size:13px;">Rookies: ${list(rookies, 6)}</p>` : ''}
+  `;
 }
 
 function renderTradeFinderTab(){
@@ -1418,9 +1408,9 @@ function renderTradeFinderTab(){
 }
 
 /* ---------- Init ---------- */
-renderValueRankings();
 renderRosterTable();
 renderPicksTable();
+loadWeekData();
 </script>
 </body>
 </html>

@@ -126,6 +126,9 @@ async function main() {
       if (ktcValue === null) missingKtc++;
       rosterOut.push({
         team,
+        // MFL's player id — how the HQ page matches a row to that player's
+        // weekly projection, which the API keys by id rather than name.
+        mflId: p.id,
         player: info.name,
         pos: info.pos,
         round: Number.isFinite(roundNum) ? roundNum : null,
