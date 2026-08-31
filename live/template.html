@@ -490,9 +490,10 @@ h1{
 .p-block{ min-width:0; }
 .p-block.home{ text-align:right; }
 .p-block.away{ text-align:left; }
-.p-top{ display:flex; align-items:baseline; gap:5px; }
-.p-block.home .p-top{ justify-content:flex-end; }
-.p-block.away .p-top{ justify-content:flex-start; }
+/* The name owns the whole top line now, so it gets the full grid column. */
+.p-top{ display:block; }
+.p-block.home .p-top{ text-align:right; }
+.p-block.away .p-top{ text-align:left; }
 /* No max-width: the 1fr grid column already bounds these, and the old cap
    was truncating names ("Amon-Ra St. …") far earlier than it needed to. */
 .p-name{
@@ -502,9 +503,10 @@ h1{
   color:var(--ink);
   white-space:nowrap;
   overflow:hidden;
-  text-overflow:ellipsis;
   max-width:100%;
+  width:100%;
   display:block;
+  line-height:1.25;
 }
 button.p-name, .game-link{
   background:none;
@@ -525,8 +527,9 @@ button.p-name:hover{ color:var(--blue); }
   letter-spacing:0.3px;
   color:var(--ink-faint);
   flex-shrink:0;
+  display:inline-flex; align-items:center;
 }
-.p-sub{ display:flex; flex-direction:column; gap:1px; margin-top:3px; }
+.p-sub{ display:flex; flex-direction:column; gap:1px; margin-top:2px; }
 .p-block.home .p-sub{ align-items:flex-end; }
 .p-block.away .p-sub{ align-items:flex-start; }
 .p-sub span, .p-sub button{
@@ -677,34 +680,48 @@ button.p-name:hover{ color:var(--blue); }
 .bench-rows[hidden]{ display:none; }
 
 /* League feed ticker */
-.ticker{ background:var(--tile); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow); margin-bottom:14px; overflow:hidden; }
-.ticker-head{
-  display:flex; align-items:center; gap:8px; width:100%;
-  padding:12px 15px; background:none; border:none; cursor:pointer; text-align:left;
-  font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700; letter-spacing:1px; color:var(--ink-dim);
-  transition:background 0.18s var(--ease);
+/* League feed as a ticker tape: one line, always the same height, so it
+   can't push the live scores down the page the way the old stacked list
+   did. The rail scrolls continuously; a new scoring play interrupts it and
+   drops in over the top, then hands the rail back. */
+.ticker{
+  background:var(--tile); border:1px solid var(--border); border-radius:999px;
+  box-shadow:var(--shadow); margin-bottom:14px;
+  display:flex; align-items:stretch; overflow:hidden;
+  height:38px; position:relative;
 }
-.ticker-head:hover{ background:var(--tile-sunken); }
+.ticker-label{
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  padding:0 13px 0 15px; background:var(--tile);
+  font-family:'Inter',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:1px; color:var(--ink-dim);
+  border-right:1px solid var(--border-soft); z-index:2;
+}
 .tk-dot{ width:7px; height:7px; border-radius:50%; background:var(--red); flex-shrink:0; animation:livePulse 2.4s ease-in-out infinite; box-shadow:0 0 0 0 var(--red-dim); }
-.ticker-head .tk-count{ margin-left:auto; color:var(--ink-faint); font-weight:600; letter-spacing:0; }
-.ticker-list{ max-height:200px; overflow-y:auto; border-top:1px solid var(--border-soft); }
-.ticker-list[hidden]{ display:none; }
-.ticker-item{ display:flex; gap:10px; padding:9px 15px; font-size:11.5px; color:var(--ink-dim); align-items:baseline; line-height:1.45; }
-.ticker-item:nth-child(even){ background:var(--tile-sunken); }
-.ticker-item.new{ animation:tickerIn 1.8s var(--ease); }
-.tk-time{ font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-faint); flex-shrink:0; min-width:54px; }
-.tk-text{ line-height:1.45; min-width:0; }
-.tk-players{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:3px; }
+.ticker-rail{ position:relative; flex:1; min-width:0; overflow:hidden; display:flex; align-items:center; }
+@keyframes tickerScroll{ from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
+.ticker-track{
+  display:flex; align-items:center; gap:26px;
+  white-space:nowrap; will-change:transform;
+  animation:tickerScroll var(--tk-dur, 40s) linear infinite;
+  padding-left:14px;
+}
+/* Paused while an interrupt is on screen, and while the reader is
+   interacting with it — a moving tap target is a hostile one. */
+.ticker-rail:hover .ticker-track, .ticker.interrupted .ticker-track{ animation-play-state:paused; }
+.tk-entry{ display:inline-flex; align-items:center; gap:7px; flex-shrink:0; font-size:11.5px; color:var(--ink-dim); }
+.tk-time{ font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-faint); flex-shrink:0; }
+.tk-play{ color:var(--ink-dim); }
+.tk-sep{ color:var(--border); }
+
 /* Each scorer is its own tap target opening that player's live card. */
 .tk-player{
-  display:inline-flex; align-items:baseline; gap:5px;
+  display:inline-flex; align-items:center; gap:5px;
   background:var(--tile-sunken); border:1px solid var(--border-soft);
   border-radius:999px; padding:3px 9px; cursor:pointer;
   font-family:inherit; font-size:11px; text-align:left;
-  transition:border-color 0.18s var(--ease), transform 0.18s var(--ease);
+  transition:border-color 0.18s var(--ease);
 }
-.ticker-item:nth-child(even) .tk-player{ background:var(--tile); }
-.tk-player:hover{ border-color:var(--blue); transform:translateY(-1px); }
+.tk-player:hover{ border-color:var(--blue); }
 .tk-player .tk-who{ font-weight:650; color:var(--ink); }
 .tk-player .tk-owner{ font-size:9.5px; font-weight:600; color:var(--blue-ink); }
 .tk-delta{
@@ -713,7 +730,23 @@ button.p-name:hover{ color:var(--blue); }
   border-radius:5px; padding:1px 5px;
 }
 .tk-total{ font-family:'DM Mono',monospace; font-size:9.5px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
-.tk-play{ display:block; color:var(--ink-dim); }
+
+/* The interrupt: slides down over the rail when a play lands. */
+@keyframes tkDropIn{ from{ transform:translateY(-100%); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+.ticker-flash{
+  position:absolute; inset:0 0 0 0;
+  display:flex; align-items:center; gap:8px;
+  padding:0 14px;
+  background:linear-gradient(90deg, var(--good-dim), var(--tile) 70%);
+  animation:tkDropIn 0.42s var(--ease);
+  z-index:3; overflow:hidden;
+}
+.ticker-flash[hidden]{ display:none; }
+.tk-flash-tag{
+  font-family:'Inter',sans-serif; font-size:8.5px; font-weight:700; letter-spacing:1px;
+  color:var(--good-ink); background:var(--good-dim); border-radius:5px; padding:3px 7px; flex-shrink:0;
+}
+.tk-flash-body{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; color:var(--ink-dim); }
 
 /* NFL team logos, served by ESPN's public CDN. Sized small and given a
    transparent fallback so a missing crest degrades to blank space rather
@@ -751,6 +784,13 @@ button.p-name:hover{ color:var(--blue); }
 .move-opt .mo-title{ font-size:12.5px; font-weight:650; }
 .move-opt .mo-sub{ font-size:10px; color:var(--ink-faint); }
 
+@media (max-width: 360px){
+  /* iPhone SE class: claw width back from the fixed columns so long names
+     don't have to shrink as far. */
+  .starter-row{ padding:9px 4px; gap:3px; }
+  .p-score{ min-width:27px; font-size:15.5px; }
+  .pos-tag{ min-width:20px; font-size:8px; padding:3px 3px; letter-spacing:0; }
+}
 @media (max-width: 480px){
   .wrap{ padding:18px 10px 60px; }
   h1{ font-size:27px; }
@@ -926,6 +966,11 @@ function renderDemo(){
   </div>`;
   renderStructure();
   patchDynamic();
+  // Demo the interrupt: a play "lands" a few seconds in, then the rail resumes.
+  if(tickerEvents.length){
+    setTimeout(() => flashTickerEvent(tickerEvents[0]), 2600);
+    setTimeout(() => flashTickerEvent(tickerEvents[1] || tickerEvents[0]), 14000);
+  }
 }
 
 /* ---------- Theme (matches the rest of the site) ---------- */
@@ -1341,7 +1386,6 @@ let playerRegistry = {};    // player id -> {id, name, pos, nflTeam}, rebuilt ea
 let openPid = null;         // player card currently open, kept live-updated by patches
 let firstPatchDone = false; // suppress the score-flash animation on the very first paint
 let tickerEvents = [];      // league feed, newest first
-let tickerOpen = true;
 let tickerPrimed = false;   // backlog harvested on first load doesn't animate
 let rosterIndex = [];       // normalized roster names for matching scoring-play text
 const seenPlays = new Set();
@@ -1438,19 +1482,67 @@ function nflLogo(abbr, cls){
 // value (scores, clocks, stat lines, projections, win%) is patched into
 // place afterwards without rebuilding the DOM, so a mid-swipe update never
 // stutters the carousel.
+// The player's NFL team used to sit beside the name and ate roughly a third
+// of the column, which is what was truncating names. It now rides on the
+// sub-line with the crest, leaving the whole top line for the name itself.
 function playerBlock(p, side){
   playerRegistry[p.id] = p;
-  const nameEl = `<button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>`;
-  const teamEl = `<span class="p-team">${nflLogo(p.nflTeam, 'nfl-logo')}${escapeHtml(p.nflTeam || '')}</span>`;
-  const top = side === 'home' ? nameEl + teamEl : teamEl + nameEl;
   return `<div class="p-block ${side}">
-    <div class="p-top">${top}</div>
+    <div class="p-top">
+      <button type="button" class="p-name js-player-card" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</button>
+    </div>
     <div class="p-sub">
+      <span class="p-team">${nflLogo(p.nflTeam, 'nfl-logo')}${escapeHtml(p.nflTeam || '')}</span>
       <button type="button" class="game-link js-player-card" data-ctx="${escapeHtml(p.id)}" data-player-id="${escapeHtml(p.id)}" hidden></button>
       <span data-stat="${escapeHtml(p.id)}" hidden></span>
     </div>
   </div>`;
 }
+
+// Belt and braces on top of the layout change: after a structural render,
+// any name still wider than its column steps its font down until it fits.
+// The row height doesn't change (names stay on one line), so shrinking a
+// couple of long names never disturbs the grid. Guarantees the ask — no
+// player name is ever clipped — instead of trusting one font size to work
+// for both "DK Metcalf" and "Christian McCaffrey" on a 390px screen.
+const NAME_SIZES = [13.5, 12.5, 11.5, 10.5, 9.5, 8.5];
+function fitPlayerNames(){
+  for(const el of document.querySelectorAll('.p-name')){
+    const full = el.dataset.full || (el.dataset.full = el.textContent.trim());
+    el.style.fontSize = '';
+    el.textContent = full;
+    const fits = () => el.scrollWidth <= el.clientWidth + 0.5;
+    if(fits()) continue;
+    for(const size of NAME_SIZES){
+      el.style.fontSize = size + 'px';
+      if(fits()) break;
+    }
+    // Still over at the smallest legible size (a very long name on a very
+    // narrow phone). Shorten the first name to an initial and retry the
+    // ladder — "J. Croskey-Merritt" reads fine; 7px type does not, and a
+    // hard clip reads worst of all.
+    if(!fits()){
+      const parts = full.split(' ');
+      if(parts.length > 1){
+        el.textContent = parts[0][0] + '. ' + parts.slice(1).join(' ');
+        el.style.fontSize = '';
+        if(!fits()){
+          for(const size of NAME_SIZES){
+            el.style.fontSize = size + 'px';
+            if(fits()) break;
+          }
+        }
+      }
+    }
+  }
+}
+let fitTimer = null;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitPlayerNames, 150); });
+// The page embeds Inter as a base64 @font-face. Measuring before it loads
+// sizes names against fallback metrics, which are narrower — so names that
+// "fit" during the first pass overflow the moment the real font swaps in.
+// Re-fit once the fonts are actually ready.
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitPlayerNames());
 
 function starterRow(homePlayer, awayPlayer){
   const pos = (homePlayer || awayPlayer).pos || '';
@@ -1608,7 +1700,8 @@ function renderStructure(){
   buildRosterIndex(matchups);
   renderLeagueStrip(matchups);
   renderCarousel(matchups);
-  renderTickerFull(0);
+  renderTickerFull();
+  fitPlayerNames();
 }
 
 /* ---------- In-place patching (every data refresh) ---------- */
@@ -1808,13 +1901,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- League feed (scoring plays involving rostered players) ---------- */
-// Each feed row is a button that opens the same player card as tapping the
-// player in a matchup, and carries that player's fantasy impact: the points
-// the play itself added (when attributable to a single play this refresh)
-// plus their running total, patched live like every other number.
-function renderTickerFull(newCount){
-  const el = document.getElementById('ticker');
-  if(!tickerEvents.length){ el.innerHTML = ''; return; }
+// The feed is a single-line ticker tape rather than a stacked list: fixed
+// height, so it can never push the live scores down the page. The rail
+// scrolls continuously and seamlessly (the entry list is rendered twice and
+// the animation translates exactly -50%). A new scoring play interrupts:
+// the rail pauses, the play drops in over it, then the rail resumes.
+function tickerEntryHtml(ev){
   const whoHtml = (w) => {
     const total = (computed[w.pid] && computed[w.pid].points) || 0;
     const delta = w.delta != null && Math.abs(w.delta) >= 0.05
@@ -1825,27 +1917,68 @@ function renderTickerFull(newCount){
       ${delta}<span class="tk-total" data-tkpts="${escapeHtml(w.pid)}">${total.toFixed(1)} pts</span>
     </button>`;
   };
-  el.innerHTML = `<div class="ticker">
-    <button type="button" class="ticker-head" id="tickerHead"><span class="tk-dot"></span>LEAGUE FEED<span class="tk-count">${tickerEvents.length}</span></button>
-    <div class="ticker-list" id="tickerList"${tickerOpen ? '' : ' hidden'}>${tickerEvents.map((ev, idx) => `
-      <div class="ticker-item${idx < newCount ? ' new' : ''}">
-        <span class="tk-time">${escapeHtml(ev.when)}</span>
-        <span class="tk-text">
-          <span class="tk-players">${ev.who.map(whoHtml).join('')}</span>
-          <span class="tk-play">${escapeHtml(ev.text)}</span>
-        </span>
-      </div>`).join('')}</div>
+  return `<span class="tk-entry">
+    <span class="tk-time">${escapeHtml(ev.when)}</span>
+    ${ev.who.map(whoHtml).join('')}
+    <span class="tk-play">${escapeHtml(ev.text)}</span>
+    <span class="tk-sep">&bull;</span>
+  </span>`;
+}
+
+function renderTickerFull(){
+  const el = document.getElementById('ticker');
+  if(!tickerEvents.length){ el.innerHTML = ''; return; }
+  const entries = tickerEvents.map(tickerEntryHtml).join('');
+  el.innerHTML = `<div class="ticker" id="tickerBox">
+    <div class="ticker-label"><span class="tk-dot"></span>FEED</div>
+    <div class="ticker-rail">
+      <div class="ticker-track" id="tickerTrack">${entries}${entries}</div>
+    </div>
+    <div class="ticker-flash" id="tickerFlash" hidden></div>
   </div>`;
-  document.getElementById('tickerHead').onclick = () => {
-    tickerOpen = !tickerOpen;
-    document.getElementById('tickerList').hidden = !tickerOpen;
-  };
+  sizeTickerSpeed();
+}
+
+// Constant reading speed regardless of how many plays are in the rail:
+// duration scales with the actual rendered width (~55px per second).
+function sizeTickerSpeed(){
+  const track = document.getElementById('tickerTrack');
+  if(!track) return;
+  const halfWidth = track.scrollWidth / 2;
+  if(halfWidth > 0) track.style.setProperty('--tk-dur', Math.max(14, Math.round(halfWidth / 55)) + 's');
+}
+
+// Drop a new play in over the rail, hold it, then hand the rail back.
+let flashTimer = null;
+function flashTickerEvent(ev){
+  const box = document.getElementById('tickerBox');
+  const flash = document.getElementById('tickerFlash');
+  if(!box || !flash) return;
+  // The play text already opens with the scorer's name (both in ESPN's real
+  // scoring feed and in demo data), so the interrupt leads with the fantasy
+  // side of it — points gained and whose team benefits — instead of saying
+  // the name twice.
+  const gained = ev.who.map((w) => w.delta).filter((d) => d != null);
+  const pts = gained.length ? `<span class="tk-delta">+${Math.max(...gained).toFixed(1)}</span>` : '';
+  const owners = [...new Set(ev.who.map((w) => w.owner))].join(', ');
+  flash.innerHTML = `<span class="tk-flash-tag">SCORE</span>${pts}
+    <span class="tk-flash-body"><b style="color:var(--ink);">${escapeHtml(owners)}</b> &middot; ${escapeHtml(ev.text)}</span>`;
+  flash.hidden = false;
+  box.classList.add('interrupted');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => {
+    flash.hidden = true;
+    box.classList.remove('interrupted');
+  }, 6000);
 }
 
 function pushTickerEvents(events, animate){
   if(!events.length) return;
   tickerEvents = [...events, ...tickerEvents].slice(0, 40);
-  renderTickerFull(animate ? events.length : 0);
+  renderTickerFull();
+  // Only a genuinely new play interrupts. The backlog harvested on first
+  // load rebuilds the rail silently rather than firing a burst of alerts.
+  if(animate) flashTickerEvent(events[0]);
 }
 
 // Pull new scoring plays out of a game summary and keep only the ones that
