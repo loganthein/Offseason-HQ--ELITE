@@ -30,11 +30,16 @@ let hqHtml = fs.readFileSync(path.join(root, 'template.html'), 'utf8');
 const roster = fs.readFileSync(path.join(root, 'seed_roster_final.json'), 'utf8');
 const picks = fs.readFileSync(path.join(root, 'seed_picks_final.json'), 'utf8');
 const notes = fs.readFileSync(path.join(root, 'team_notes_min.json'), 'utf8');
+// Written by sync-mfl.js once a draft has actually been run; before that
+// there's no board to show, so the tab renders its own empty state.
+const draftBoardPath = path.join(root, 'draft_board.json');
+const draftBoard = fs.existsSync(draftBoardPath) ? fs.readFileSync(draftBoardPath, 'utf8') : '[]';
 
 hqHtml = injectFonts(hqHtml)
   .replace('{{SEED_ROSTER}}', roster)
   .replace('{{SEED_PICKS}}', picks)
-  .replace('{{TEAM_NOTES}}', notes);
+  .replace('{{TEAM_NOTES}}', notes)
+  .replace('{{DRAFT_BOARD}}', draftBoard);
 
 checkResolved(hqHtml, 'build/template.html');
 fs.writeFileSync(hqOutPath, hqHtml);

@@ -593,7 +593,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <div>
       <div class="eyebrow">#ELITE Fantasy Football &middot; Season 2026</div>
       <h1>Offseason HQ</h1>
-      <p>Every roster, every keeper cost, every future pick — pulled straight from the league and laid out so the whole league can plan the offseason in one place.</p>
+      <p>Every post-draft roster, every keeper cost, every remaining pick — pulled straight from the league and laid out so the whole league can see where each team stands.</p>
     </div>
     <div class="header-meta">
       <span id="dataAsOf">Synced from MFL League 31492</span>
@@ -607,6 +607,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <button class="tab-btn active" data-tab="rules">Rules &amp; Settings</button>
     <button class="tab-btn" data-tab="overview">Team Overview</button>
     <button class="tab-btn" data-tab="roster">Roster &amp; Keepers</button>
+    <button class="tab-btn" data-tab="draft">Draft Recap</button>
     <button class="tab-btn" data-tab="picks">Draft Picks</button>
     <button class="tab-btn" data-tab="trade">Trade Finder</button>
   </nav>
@@ -615,7 +616,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
   <section id="tab-rules" class="tab-panel active">
     <div class="card" style="margin-bottom:26px; border-style:dashed;">
       <div style="font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:var(--blue); margin-bottom:6px;">New This Season</div>
-      <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:4px;">Four Rule Changes for the Upcoming Draft</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--ink); margin-bottom:4px;">Four Rule Changes That Shaped This Draft</div>
       <ul class="subnote" style="margin:0; padding-left:18px;">
         <li>Roster size drops from 15 to <b>14</b>.</li>
         <li>Undrafted free-agent pickups are now keeper-eligible &mdash; first year costs a flat <b>6th-round</b> pick.</li>
@@ -760,9 +761,22 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
   </section>
 
   <!-- PICKS TAB -->
+  <!-- DRAFT RECAP TAB -->
+  <section id="tab-draft" class="tab-panel">
+    <div class="section-title">Draft Recap</div>
+    <p class="subnote" id="draftSubnote">Every pick from the 2026 draft, in order.</p>
+
+    <div class="toolbar">
+      <select id="draftTeamFilter" onchange="renderDraftTab()"><option value="">All teams</option></select>
+      <select id="draftPosFilter" onchange="renderDraftTab()"><option value="">All positions</option></select>
+      <label class="checkline"><input type="checkbox" id="draftRookieFilter" onchange="renderDraftTab()"> Rookies only</label>
+    </div>
+    <div id="draftBoard"></div>
+  </section>
+
   <section id="tab-picks" class="tab-panel">
     <div class="section-title">Draft Picks</div>
-    <p class="subnote">The 2026 draft order, plus every pick already on the books for 2027&ndash;2029.</p>
+    <p class="subnote">Draft capital still on the books &mdash; any unused 2026 slots, plus every pick already owned for 2027&ndash;2029. Picks already spent in the 2026 draft appear under Draft Recap instead.</p>
 
     <div class="toolbar">
       <select id="picksTeamFilter" onchange="renderPicksTable()"><option value="">All teams</option></select>
@@ -816,13 +830,14 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     <div id="plannerContent"></div>
   </section>
 
-  <footer>#ELITE Offseason HQ &middot; built for the offseason ahead of the 2026 draft</footer>
+  <footer>#ELITE Offseason HQ &middot; rosters current as of the 2026 draft</footer>
 </div>
 
 <script>
 const SEED_ROSTER = {{SEED_ROSTER}};
 const SEED_PICKS = {{SEED_PICKS}};
 const TEAM_NOTES = {{TEAM_NOTES}};
+const DRAFT_BOARD = {{DRAFT_BOARD}};
 
 let roster = JSON.parse(JSON.stringify(SEED_ROSTER));
 let picks = JSON.parse(JSON.stringify(SEED_PICKS));
@@ -889,6 +904,62 @@ function fmtSaved(saved){
   return (saved > 0 ? '+' : '') + saved + ' rd' + (Math.abs(saved)===1?'':'s');
 }
 
+/* ---------- Draft recap ----------
+   DRAFT_BOARD is every pick that was actually spent in the 2026 draft,
+   already sorted by round then pick by sync-mfl.js. Empty before a draft
+   happens, in which case the tab says so rather than rendering a blank
+   table. */
+function populateDraftFilters(){
+  const teamSel = document.getElementById('draftTeamFilter');
+  const posSel = document.getElementById('draftPosFilter');
+  if(!teamSel || !posSel || teamSel.dataset.filled) return;
+  for(const t of [...new Set(DRAFT_BOARD.map(d=>d.team))].sort()){
+    teamSel.insertAdjacentHTML('beforeend', '<option>'+t+'</option>');
+  }
+  for(const p of [...new Set(DRAFT_BOARD.map(d=>d.pos).filter(Boolean))].sort()){
+    posSel.insertAdjacentHTML('beforeend', '<option>'+p+'</option>');
+  }
+  teamSel.dataset.filled = '1';
+}
+
+function renderDraftTab(){
+  const host = document.getElementById('draftBoard');
+  if(!host) return;
+  populateDraftFilters();
+  if(!DRAFT_BOARD.length){
+    host.innerHTML = '<p class="subnote">No picks recorded yet &mdash; this fills in once the draft has been run and the data resynced from MFL.</p>';
+    document.getElementById('draftSubnote').textContent = 'The draft board will appear here once the draft is complete.';
+    return;
+  }
+  const team = document.getElementById('draftTeamFilter').value;
+  const pos = document.getElementById('draftPosFilter').value;
+  const rookieOnly = document.getElementById('draftRookieFilter').checked;
+  const rows = DRAFT_BOARD.filter(d =>
+    (!team || d.team === team) && (!pos || d.pos === pos) && (!rookieOnly || d.rookie));
+
+  document.getElementById('draftSubnote').textContent =
+    DRAFT_BOARD.length + ' picks made across ' + new Set(DRAFT_BOARD.map(d=>d.round)).size + ' rounds.';
+
+  if(!rows.length){ host.innerHTML = '<p class="subnote">No picks match those filters.</p>'; return; }
+
+  let html = '<div class="table-scroll"><table class="lean-table"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th></tr></thead><tbody>';
+  let lastRound = null;
+  for(const d of rows){
+    if(d.round !== lastRound){
+      lastRound = d.round;
+      html += '<tr><td colspan="4" style="font-family:\'DM Mono\',monospace; font-size:10.5px; letter-spacing:0.5px; color:var(--ink-faint); background:var(--tile-hover);">ROUND ' + d.round + '</td></tr>';
+    }
+    const pc = posClass(d.pos);
+    html += '<tr>'
+      + '<td style="font-family:\'DM Mono\',monospace; color:var(--ink-faint);">' + d.round + '.' + String(d.pick).padStart(2,'0') + '</td>'
+      + '<td>' + d.player + (d.rookie ? ' <span class="badge b-r">R</span>' : '') + '</td>'
+      + '<td><span class="pos-tag ' + pc + '">' + posLabel(d.pos) + '</span></td>'
+      + '<td>' + d.team + '</td>'
+      + '</tr>';
+  }
+  host.innerHTML = html + '</tbody></table></div>';
+}
+
 /* ---------- Tabs ---------- */
 function activateTab(tab){
   const btn = document.querySelector('.tab-btn[data-tab="'+tab+'"]');
@@ -899,6 +970,7 @@ function activateTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab === 'trade') renderTradeFinderTab();
   if(tab === 'overview') populateOverviewTeamSelect();
+  if(tab === 'draft') renderDraftTab();
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=> activateTab(btn.dataset.tab));

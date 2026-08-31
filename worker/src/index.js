@@ -89,6 +89,15 @@ Only SELECT statements are allowed. Write plain, direct answers — this is a ca
 
 You also have a web search tool for anything outside this league's own history — current NFL news, injury reports, this week's real games and scores, live rankings, general football knowledge. Use the database for anything about this league specifically (its games, drafts, trades, owners); use web search for real-world/current football context; combine both when a question spans both (e.g. "how does our keeper league's Bijan Robinson value compare to how he's playing right now").
 
+THE ${MFL_SEASON} DRAFT IS COMPLETE. Every team's roster is now set for the season, and this year's draft is done and fully visible to you through query_mfl_live: type "rosters" for who's on a team now, type "draftResults" for the pick-by-pick board, type "futureDraftPicks" for remaining draft capital. None of this is in the SQL database (it stops at 2025), so reach for query_mfl_live first for anything about this year's teams or draft.
+
+Evaluating rosters is squarely your job now, and it's the thing people will ask you about most this time of year. When someone asks how a team looks, who won the draft, who reached, who got a steal, who should be worried, or how two teams stack up:
+- Pull the actual roster or draft board first. Never assess a team from memory or assumption.
+- Then bring real football judgment to it: starting-lineup strength position by position, depth and bye/injury exposure, age and whether the roster is built to win now or later, obvious holes, and how the picks compare to where those players were being drafted generally. Use web search when you need current ADP, injury news, depth-chart or beat-reporter context to make the call sound.
+- Read it through this league's format — Superflex-ish (1-2 QB) makes quarterbacks meaningfully more valuable than in a standard league, .5 PPR lifts pass-catching backs and slot receivers, and it's a keeper league, so a young roster with future picks may be deliberately built for next year rather than badly built for this one.
+- Have an actual opinion. "Solid roster" helps nobody. Say which teams you'd bet on, where a specific team will lose games, which pick you'd take back. Back every claim with the player or pick you're pointing at.
+- Rank or compare teams when asked, and be willing to tell someone their team is a problem. Needle them about it — that's the tone here. Just keep it about the roster, and don't invent injuries, transactions, or news you haven't actually looked up.
+
 Current league rules (as of the 2026 season — the league tweaks a rule or two most years, so keep this current if told about a change; the authoritative copy lives on the HQ page's Rules & Settings tab):
 - 14 teams, 14-man rosters, Superflex-ish starters (1-2 QB), .5 PPR.
 - Up to 2 keepers per team, plus a possible 3rd "Designated Player" slot (below).
@@ -118,7 +127,7 @@ You're replying in Slack for this message, not the web chat. Use Slack's mrkdwn 
 const MFL_HOST = "www45.myfantasyleague.com";
 const MFL_LEAGUE_ID = "31492";
 const MFL_SEASON = 2026;
-const MFL_LIVE_TYPES = ["liveScoring", "weeklyResults", "leagueStandings", "transactions", "rosters"];
+const MFL_LIVE_TYPES = ["liveScoring", "weeklyResults", "leagueStandings", "transactions", "rosters", "draftResults", "futureDraftPicks"];
 
 const TOOLS = [
   {
@@ -134,7 +143,14 @@ const TOOLS = [
   },
   {
     name: "query_mfl_live",
-    description: `Pull live data for the CURRENT (${MFL_SEASON}) in-progress season directly from MFL — this week's live or final scores, current standings, recent waiver/trade activity, or current rosters ("who's on X's roster right now" -> type "rosters"). Use this instead of query_league_database for anything about the in-progress season, "this week," "right now," current roster, or recent transactions, since the SQL database stops at 2025. The response includes franchiseNames (MFL franchise id -> current team name) and playerNames (MFL player id -> {name, pos}) lookups alongside the raw data — cross-reference any id field in the data against those rather than guessing or showing a raw id to the user. Typical shapes: leagueStandings has wins/losses/points-for per franchise; weeklyResults/liveScoring have per-franchise (often per-player) scores for a week; transactions has recent adds/drops/trades with timestamps; rosters has each franchise's player ids plus contractStatus (keeper cost) and drafted (how acquired). The exact fields can vary by type — read what actually comes back rather than assuming.`,
+    description: `Pull live data for the CURRENT (${MFL_SEASON}) season directly from MFL — post-draft rosters, this year's draft results, live or final scores, standings, or recent waiver/trade activity. Use this instead of query_league_database for anything about ${MFL_SEASON}, "this week," "right now," current roster, this year's draft, or recent transactions, since the SQL database stops at 2025. The response includes franchiseNames (MFL franchise id -> current team name) and playerNames (MFL player id -> {name, pos}) lookups alongside the raw data — cross-reference any id field in the data against those rather than guessing or showing a raw id to the user. Types:
+- rosters: each franchise's current post-draft roster — player ids plus contractStatus (keeper cost round) and drafted (how acquired). This is the source of truth for "who's on X's team now" and for evaluating a roster.
+- draftResults: the ${MFL_SEASON} draft, pick by pick — round, pick, franchise, and the player taken. Use for "who did X draft," "what went in round 1," "who got the best value."
+- futureDraftPicks: draft capital each team holds in future years, with originalPickFor showing a pick acquired by trade.
+- leagueStandings: wins/losses/points-for per franchise.
+- weeklyResults / liveScoring: per-franchise (often per-player) scores for a week.
+- transactions: recent adds/drops/trades with timestamps.
+The exact fields can vary by type — read what actually comes back rather than assuming.`,
     input_schema: {
       type: "object",
       properties: {
@@ -152,7 +168,9 @@ const TOOLS = [
     // 4.5 predates that, so it gets the older basic web search tool version.
     type: "web_search_20250305",
     name: "web_search",
-    max_uses: 3,
+    // Assessing a roster can burn several searches (ADP, injury news, depth
+    // chart) before it has enough to say something real.
+    max_uses: 5,
   },
 ];
 
@@ -222,17 +240,20 @@ function toFirstLast(mflName) {
   return `${first} ${last}`;
 }
 
-// Walks the response looking for every value under a key literally named
-// "id" — covers player ids in rosters/liveScoring/weeklyResults/
-// transactions without needing to hand-model each type's exact shape.
-// Franchise ids get swept up too; they just won't match anything in the
-// players lookup below, so they're harmless noise.
+// Walks the response looking for every value under a key that carries a
+// player id — "id" covers rosters/liveScoring/weeklyResults/transactions,
+// and "player" covers draftResults, where each pick stores the drafted
+// player under that key instead (without this, every draft pick would reach
+// the model as a bare numeric id with no name attached). Franchise ids get
+// swept up too; they just won't match anything in the players lookup below,
+// so they're harmless noise.
+const PLAYER_ID_KEYS = new Set(["id", "player"]);
 function collectIds(obj, out = new Set()) {
   if (Array.isArray(obj)) {
     for (const item of obj) collectIds(item, out);
   } else if (obj && typeof obj === "object") {
     for (const [key, val] of Object.entries(obj)) {
-      if (key === "id" && typeof val === "string") out.add(val);
+      if (PLAYER_ID_KEYS.has(key) && typeof val === "string") out.add(val);
       else collectIds(val, out);
     }
   }
@@ -549,7 +570,11 @@ async function callClaude(env, messages, { stream, tools = TOOLS, system = SYSTE
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 1024,
+      // 1024 was fine for one-line history lookups but truncates a roster
+      // breakdown mid-sentence. Output is billed per token actually
+      // generated, not per this ceiling, so raising it costs nothing on
+      // short answers and just stops long ones from getting cut off.
+      max_tokens: 4096,
       system,
       tools,
       messages,

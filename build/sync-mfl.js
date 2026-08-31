@@ -65,10 +65,12 @@ async function main() {
   await login();
 
   console.log("Fetching league, rosters, players, draft results, future picks...");
+  // DETAILS=1 is a heavier response but carries draft_year, which is the
+  // only way to flag NFL rookies for the HQ page's "Rookies only" filter.
   const [league, rosters, players, draftResults, futurePicks] = await Promise.all([
     mflFetch("league"),
     mflFetch("rosters"),
-    mflFetch("players", "&DETAILS=0"),
+    mflFetch("players", "&DETAILS=1"),
     mflFetch("draftResults"),
     mflFetch("futureDraftPicks"),
   ]);
@@ -85,9 +87,15 @@ async function main() {
     return `${first} ${last}`;
   }
 
+  // draft_year only comes back under DETAILS=1, and not for every player
+  // (undrafted free agents have none). Treat "same year as this season" as
+  // a rookie; anything missing stays false rather than guessing.
   const playerInfo = {};
+  let rookieCount = 0;
   for (const p of players.players.player) {
-    playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position };
+    const isRookie = String(p.draft_year || "") === String(SEASON);
+    if (isRookie) rookieCount++;
+    playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, rookie: isRookie };
   }
 
   const ktcMap = JSON.parse(fs.readFileSync(path.join(ROOT, "ktc_map.json"), "utf8"));
@@ -121,23 +129,44 @@ async function main() {
         round: Number.isFinite(roundNum) ? roundNum : null,
         acquired,
         designation,
-        rookie: false,
+        rookie: !!info.rookie,
         ktcValue,
         adpRank,
       });
     }
   }
 
-  // --- picks: current season (SEASON) from draftResults, slot number only ---
+  // --- picks: current season (SEASON) from draftResults ---
+  // A pick that's already been used carries the player it was spent on, so
+  // once the draft is done those aren't assets any more and listing them
+  // alongside future picks would misrepresent what a team actually holds.
+  // Unused slots (pre-draft, or a draft still in progress) still count.
   const picksOut = [];
-  for (const dp of draftResults.draftResults.draftUnit.draftPick) {
-    picksOut.push({
-      team: franchiseName[dp.franchise] || `Franchise ${dp.franchise}`,
-      year: SEASON,
-      round: parseInt(dp.round, 10),
-      note: `Pick ${parseInt(dp.pick, 10)}`,
-    });
+  const draftUnits = draftResults.draftResults.draftUnit;
+  const allUnits = Array.isArray(draftUnits) ? draftUnits : [draftUnits];
+  let usedPicks = 0;
+  const draftBoard = [];
+  for (const unit of allUnits) {
+    const dps = Array.isArray(unit.draftPick) ? unit.draftPick : unit.draftPick ? [unit.draftPick] : [];
+    for (const dp of dps) {
+      const team = franchiseName[dp.franchise] || `Franchise ${dp.franchise}`;
+      const round = parseInt(dp.round, 10);
+      const pick = parseInt(dp.pick, 10);
+      const drafted = dp.player ? playerInfo[dp.player] : null;
+      if (dp.player) {
+        usedPicks++;
+        draftBoard.push({
+          team, round, pick,
+          player: drafted ? drafted.name : `Player ${dp.player}`,
+          pos: drafted ? drafted.pos : null,
+          rookie: !!(drafted && drafted.rookie),
+        });
+      } else {
+        picksOut.push({ team, year: SEASON, round, note: `Pick ${pick}` });
+      }
+    }
   }
+  draftBoard.sort((a, b) => a.round - b.round || a.pick - b.pick);
 
   // --- picks: future seasons from futureDraftPicks, exact "via" from originalPickFor ---
   for (const franchise of futurePicks.futureDraftPicks.franchise) {
@@ -158,13 +187,17 @@ async function main() {
   fs.writeFileSync(path.join(ROOT, "mfl_league.json"), JSON.stringify(league));
   fs.writeFileSync(path.join(ROOT, "mfl_draftresults.json"), JSON.stringify(draftResults));
   fs.writeFileSync(path.join(ROOT, "mfl_futurepicks.json"), JSON.stringify(futurePicks));
+  fs.writeFileSync(path.join(ROOT, "draft_board.json"), JSON.stringify(draftBoard));
 
-  console.log(`\nWrote ${rosterOut.length} roster entries, ${picksOut.length} pick entries.`);
+  console.log(`\nWrote ${rosterOut.length} roster entries, ${picksOut.length} unused pick entries.`);
+  console.log(`${SEASON} draft: ${usedPicks} picks made (written to draft_board.json), ${rookieCount} rookies flagged league-wide.`);
+  if (usedPicks && picksOut.some((p) => p.year === SEASON)) {
+    console.log(`NOTE: the ${SEASON} draft looks partially complete — some slots still unused.`);
+  }
   if (missingPlayers) console.log(`${missingPlayers} roster player id(s) had no match in the players export — check the warnings above.`);
   console.log(`${missingKtc} player(s) have no KTC value match (expected for defenses/some names — same as before).`);
   console.log(`\nPrevious files backed up as *.prev.json for comparison.`);
   console.log(`\nNext: node build.js   (then check hq/index.html, commit, push)`);
-  console.log(`Reminder: the ${SEASON} draft-pick "via TeamName" trade labels were left blank — tell me which ${SEASON} picks were traded and I'll add those notes by hand.`);
 }
 
 main().catch((e) => {
