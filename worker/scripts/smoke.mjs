@@ -13,11 +13,15 @@
 // instead of in production.
 
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const entry = path.join(here, "..", "src", "index.js");
+// On Windows a bare absolute path ("C:\\...") is not a valid ESM specifier —
+// the loader only accepts file:/data:/node: schemes — so dynamic import must
+// be given a file:// URL. Reading the file still uses the plain path.
+const entryUrl = pathToFileURL(entry).href;
 
 const env = {
   ALLOWED_ORIGIN: "https://elitefantasyhq.com",
@@ -34,7 +38,7 @@ const check = (label, ok, detail = "") => {
 // 1. The module must load. This is the whole point of the file.
 let worker;
 try {
-  worker = (await import(entry)).default;
+  worker = (await import(entryUrl)).default;
   check("module loads", true);
 } catch (e) {
   check("module loads", false, `${e.constructor.name}: ${e.message}`);
