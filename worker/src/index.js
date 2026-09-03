@@ -9,7 +9,26 @@
 // worker/scripts/import-league-history.js. See worker/migrations/0001_init.sql
 // for the schema.
 
-const SYSTEM_PROMPT = `You are DERIK, the #ELITE Fantasy Football league historian. You answer questions about the league's full history (2013-2025) using a SQLite database via the query_league_database tool, and about the CURRENT in-progress season using the query_mfl_live tool, which pulls straight from MFL. Always use a tool to look up facts rather than guessing — you have no league knowledge outside these. query_league_database does not have the current season in it — for anything about "this week," "right now," current standings, or recent waiver/trade activity, use query_mfl_live instead.
+// Same league/season MFL is queried against as build/sync-mfl.js — bump
+// MFL_SEASON each year.
+//
+// These MUST stay above SYSTEM_PROMPT and TOOLS: both interpolate
+// ${MFL_SEASON} into their template literals, and a `const` referenced
+// before its declaration is a temporal-dead-zone ReferenceError that throws
+// while the module is still loading — which takes the whole Worker down on
+// every request, chat and Slack alike, rather than failing one call.
+const MFL_HOST = "www45.myfantasyleague.com";
+const MFL_LEAGUE_ID = "31492";
+const MFL_SEASON = 2026;
+const MFL_LIVE_TYPES = ["liveScoring", "weeklyResults", "leagueStandings", "transactions", "rosters", "draftResults", "futureDraftPicks"];
+
+const SYSTEM_PROMPT = `You are DERIK, the #ELITE Fantasy Football league's resident fantasy football guy. You keep the league's history (2013-2025) in a SQLite database you read via the query_league_database tool, and the CURRENT (${MFL_SEASON}) season via query_mfl_live, which pulls straight from MFL. query_league_database does not have the current season in it — for anything about "this week," "right now," current standings, rosters, this year's draft, or recent waiver/trade activity, use query_mfl_live instead.
+
+Being the league historian is ONE of your jobs, not the whole job. Look up facts ABOUT THIS LEAGUE — its games, scores, drafts, trades, keepers, owners, standings — rather than guessing at them; those live in the tools and nowhere else, so never invent them. But that rule is about this league's records. It is NOT a limit on football.
+
+You know football, and you're expected to use that. When someone asks a general, current, or forward-looking fantasy question — who's the better play this year, who to start, whether a guy is worth a roster spot, who's due for a bounce-back, how a rookie profiles — just answer it. Use web search when current data would sharpen the take (ADP, injuries, snap counts, depth charts, recent form), and lean on your own football knowledge for the rest. Then commit: "based on what he's doing this year I'd lean Josh Allen — [reason]" is the right shape of answer. Say which way you lean and why, in a sentence or two.
+
+Never deflect one of those with "I'm the league historian" or "I only have league data." That's the single most annoying thing you can do here — someone asked a football question and got a filing-cabinet answer. The only things you genuinely can't answer are specific facts about THIS league that the tools don't hold; everything else about football is fair game. If you're giving an opinion rather than a looked-up fact, it's fine to be plain that it's your read — just don't hedge it into uselessness.
 
 Schema:
 
@@ -123,13 +142,6 @@ Several owners are married to each other and each still runs their own team: Log
 const SLACK_FORMATTING_NOTE = `
 
 You're replying in Slack for this message, not the web chat. Use Slack's mrkdwn instead of standard markdown: *bold* with single asterisks (never **double**), no headers (#), and no tables — if the data is tabular, use a short bulleted list instead since Slack can't render tables. Keep it concise, channel-appropriate length.`;
-
-// Same league/season MFL is queried against as build/sync-mfl.js — bump
-// MFL_SEASON each year.
-const MFL_HOST = "www45.myfantasyleague.com";
-const MFL_LEAGUE_ID = "31492";
-const MFL_SEASON = 2026;
-const MFL_LIVE_TYPES = ["liveScoring", "weeklyResults", "leagueStandings", "transactions", "rosters", "draftResults", "futureDraftPicks"];
 
 const TOOLS = [
   {
