@@ -498,7 +498,15 @@ async function handleLiveScores(request, env) {
   const playersById = {};
   if (lineupConfirmed) {
     for (const f of liveFranchises) {
-      const players = f.players?.player;
+      // Every other MFL export nests a franchise's player list directly as
+      // `franchise.player` (confirmed against real data for rosters/
+      // draftResults in sync-mfl.js) — liveScoring was guessed as the odd
+      // one out with an extra `.players` wrapper before this was ever
+      // checked against a real live payload, which meant every roster came
+      // back empty and every lineup slot on the live scoreboard showed as
+      // unset even once MFL had live scoring running. Try the real shape
+      // first, keep the old guess only as a fallback.
+      const players = f.player ?? f.players?.player;
       playersById[f.id] = Array.isArray(players) ? players : players ? [players] : [];
     }
   } else {
