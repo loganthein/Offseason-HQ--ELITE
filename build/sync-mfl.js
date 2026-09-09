@@ -100,16 +100,10 @@ async function main() {
     playerInfo[p.id] = { name: toFirstLast(p.name), pos: p.position === "Def" ? "D" : p.position, rookie: isRookie, nflTeam: p.team || null };
   }
 
-  const ktcMap = JSON.parse(fs.readFileSync(path.join(ROOT, "ktc_map.json"), "utf8"));
-  function ktcLookup(name) {
-    const hit = ktcMap[name.toLowerCase()];
-    return hit ? { ktcValue: hit.value, adpRank: parseInt(hit.rank, 10) || null } : { ktcValue: null, adpRank: null };
-  }
-
   // --- rosters ---
   const rosterOut = [];
   let missingPlayers = 0;
-  let missingKtc = 0;
+  let k1Count = 0, k2Count = 0;
   for (const franchise of rosters.rosters.franchise) {
     const team = franchiseName[franchise.id] || `Franchise ${franchise.id}`;
     for (const p of franchise.player || []) {
@@ -121,9 +115,17 @@ async function main() {
       }
       const roundNum = parseInt(String(p.contractStatus || "").replace(/\D/g, ""), 10);
       const acquired = p.drafted || "FA";
-      const designation = acquired === "Keeper 1" ? "K1" : acquired === "Keeper 2" ? "K2" : "none";
-      const { ktcValue, adpRank } = ktcLookup(info.name);
-      if (ktcValue === null) missingKtc++;
+      // MFL's real values here are "K1"/"K1*"/"K2" (an asterisk marks the
+      // 2-round-jump case from a 2nd consecutive kept year) — NOT the long
+      // form "Keeper 1"/"Keeper 2" this used to check for, which never
+      // matched anything. Every roster's keeper designation has silently
+      // been "none" since this field was added: the accelerated-cost stat,
+      // every K1/K2 badge, and the keeper planner have all been reading off
+      // a comparison that could never be true. Confirmed against this
+      // league's real roster export before fixing.
+      const designation = acquired === "K1" || acquired === "K1*" ? "K1" : acquired === "K2" ? "K2" : "none";
+      if (designation === "K1") k1Count++;
+      if (designation === "K2") k2Count++;
       rosterOut.push({
         team,
         // MFL's player id — how the HQ page matches a row to that player's
@@ -131,13 +133,17 @@ async function main() {
         mflId: p.id,
         player: info.name,
         pos: info.pos,
-        round: Number.isFinite(roundNum) ? roundNum : null,
+        // contractStatus only reliably holds a keeper round for players kept
+        // via K1/K1*/K2/DDraft/Trade/FA; for "Draft"-acquired players
+        // (never kept) it carries unrelated data — mostly "X" (already
+        // parses to null above) but at least one real roster showed "111",
+        // which passes Number.isFinite and would otherwise render as the
+        // nonsensical "Rd 111". Bound it to the league's actual round range.
+        round: Number.isFinite(roundNum) && roundNum >= 1 && roundNum <= 14 ? roundNum : null,
         acquired,
         designation,
         rookie: !!info.rookie,
         nflTeam: info.nflTeam || null,
-        ktcValue,
-        adpRank,
       });
     }
   }
@@ -201,7 +207,7 @@ async function main() {
     console.log(`NOTE: the ${SEASON} draft looks partially complete — some slots still unused.`);
   }
   if (missingPlayers) console.log(`${missingPlayers} roster player id(s) had no match in the players export — check the warnings above.`);
-  console.log(`${missingKtc} player(s) have no KTC value match (expected for defenses/some names — same as before).`);
+  console.log(`Keepers: ${k1Count} on K1, ${k2Count} on K2 (their last eligible year).`);
   console.log(`\nPrevious files backed up as *.prev.json for comparison.`);
   console.log(`\nNext: node build.js   (then check hq/index.html, commit, push)`);
 }

@@ -24,20 +24,38 @@ function checkResolved(html, label) {
   }
 }
 
-// --- hq/index.html (Offseason HQ: rosters, keepers, picks, trade finder) ---
+// --- hq/index.html (Offseason HQ: in-season team/DP/research/trade tools) ---
 const hqOutPath = path.join(root, '..', 'hq', 'index.html');
 let hqHtml = fs.readFileSync(path.join(root, 'template.html'), 'utf8');
-const roster = fs.readFileSync(path.join(root, 'seed_roster_final.json'), 'utf8');
+const seedRosterPath = path.join(root, 'seed_roster_final.json');
+const roster = fs.readFileSync(seedRosterPath, 'utf8');
 const picks = fs.readFileSync(path.join(root, 'seed_picks_final.json'), 'utf8');
 // Written by sync-mfl.js once a draft has actually been run; before that
 // there's no board to show, so the tab renders its own empty state.
 const draftBoardPath = path.join(root, 'draft_board.json');
 const draftBoard = fs.existsSync(draftBoardPath) ? fs.readFileSync(draftBoardPath, 'utf8') : '[]';
+// Hand-maintained: who's used their one-time Designated Player tag, and on
+// whom (MFL has no field for this — see sync-mfl.js's designation comment
+// for the keeper fields it DOES track). Update this file when someone tags
+// a DP; the page cross-references it against the live roster by player name
+// rather than by team, so it keeps pointing at the right owner even if the
+// player gets traded afterward.
+const dpTagsPath = path.join(root, 'dp_tags.json');
+const dpTags = fs.existsSync(dpTagsPath) ? fs.readFileSync(dpTagsPath, 'utf8') : '[]';
+// Sync and build are separate manual steps that can happen minutes or days
+// apart — the roster file's own mtime is when the data actually left MFL,
+// which is the honest answer to "how stale is this," not "when did
+// node build.js last run."
+const syncedAt = fs.statSync(seedRosterPath).mtime.toLocaleString('en-US', {
+  month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+});
 
 hqHtml = injectFonts(hqHtml)
   .replace('{{SEED_ROSTER}}', roster)
   .replace('{{SEED_PICKS}}', picks)
-  .replace('{{DRAFT_BOARD}}', draftBoard);
+  .replace('{{DRAFT_BOARD}}', draftBoard)
+  .replace('{{DP_TAGS}}', dpTags)
+  .replace('{{SYNCED_AT}}', syncedAt);
 
 checkResolved(hqHtml, 'build/template.html');
 fs.writeFileSync(hqOutPath, hqHtml);
