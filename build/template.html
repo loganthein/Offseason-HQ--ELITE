@@ -428,6 +428,12 @@ tr:last-child td{ border-bottom:none; }
 .team-keeper-table td:first-child{ min-width:140px; }
 .team-keeper-table td:not(:first-child), .team-keeper-table th:not(:first-child){ text-align:center; white-space:nowrap; }
 .lean-table .note-cell{ display:flex; align-items:center; gap:6px; margin-top:2px; }
+/* DP Watch: team/owner/player names vary a lot in length, and letting any
+   of them wrap made the row heights ragged and put the DP badge on its own
+   line for some rows but not others. Keep every cell one line — the
+   .table-scroll wrapper already handles overflow on narrow screens. */
+.dp-watch-table td, .dp-watch-table th{ white-space:nowrap; }
+.dp-watch-table td.wrap-cell{ white-space:normal; min-width:220px; }
 tbody tr:hover{ background:var(--tile-hover); }
 th.sortable{ cursor:pointer; user-select:none; }
 th.sortable:hover{ color:var(--ink); }
@@ -484,6 +490,7 @@ th.sortable.active .arrow{ color:var(--red); }
 }
 .stat-box .stat-num{ font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--ink); line-height:1; }
 .stat-box .stat-label{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.5px; font-family:'DM Mono',monospace; margin-top:4px; }
+.stat-box .stat-sub{ font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink-dim); margin-top:6px; line-height:1.3; }
 
 .pos-group{ margin-bottom:16px; }
 .pos-group h4{
@@ -560,8 +567,13 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
   header p{ max-width:none; font-size:13.5px; }
   .header-meta{ align-items:flex-start; text-align:left; flex-direction:row; align-items:center; gap:10px; }
 
-  .tabs{ gap:2px; padding:4px; }
-  .tab-btn{ padding:9px 8px; font-size:11px; }
+  /* 7 tabs no longer fit in one row at phone widths; flex-wrap left a
+     ragged half-empty second row (2 buttons stretched across the full
+     width). A single scrollable row keeps every button the same size and
+     lets the user swipe to the rest instead. */
+  .tabs{ flex-wrap:nowrap; overflow-x:auto; gap:2px; padding:4px; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab-btn{ flex:0 0 auto; padding:9px 12px; font-size:11px; }
 
   .section-title{ font-size:22px; }
   .card{ padding:13px 14px; }
@@ -706,7 +718,7 @@ footer{ text-align:center; color:var(--ink-faint); font-size:12px; margin-top:44
     </div>
 
     <div class="table-scroll">
-      <table class="lean-table">
+      <table class="lean-table dp-watch-table">
         <thead><tr><th>Team</th><th>Owner</th><th>Designated Player</th><th>Pos</th><th>Kept Rd</th></tr></thead>
         <tbody id="dpWatchBody"></tbody>
       </table>
@@ -956,7 +968,7 @@ function renderDpWatch(){
 
   const unmatched = DP_TAGS.filter(t => !dpForPlayer(t.player).row);
   const unmatchedHtml = unmatched.length ? unmatched.map(t =>
-    `<tr><td>&mdash;</td><td class="note-cell">${t.owner}</td><td class="note-cell">"${t.player}" doesn't match anyone on a current roster &mdash; check the spelling in dp_tags.json or whether he's since been dropped.</td><td></td><td></td></tr>`
+    `<tr><td>&mdash;</td><td class="note-cell">${t.owner}</td><td class="note-cell wrap-cell">"${t.player}" doesn't match anyone on a current roster &mdash; check the spelling in dp_tags.json or whether he's since been dropped.</td><td></td><td></td></tr>`
   ).join('') : '';
 
   body.innerHTML = rows + unmatchedHtml || '<tr><td colspan="5" class="empty-hint" style="border:none;">No teams match that search.</td></tr>';
@@ -1020,6 +1032,7 @@ function activateTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
+  btn.scrollIntoView({ block:'nearest', inline:'nearest', behavior:'smooth' });
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab === 'trade') renderTradeFinderTab();
   if(tab === 'overview') populateOverviewTeamSelect();
@@ -1342,7 +1355,7 @@ function renderTeamOverview(){
 
   const teamRoster = roster.filter(r=>r.team===team);
   const teamPicks = picks.filter(p=>p.team===team);
-  const acceleratedCount = teamRoster.filter(r=>r.designation === 'K2').length;
+  const k2Players = teamRoster.filter(r=>r.designation === 'K2');
   const years = [...new Set(teamPicks.map(p=>p.year))].sort();
   const dp = dpForTeam(team);
 
@@ -1359,7 +1372,11 @@ function renderTeamOverview(){
   content.innerHTML = `
     <div class="overview-summary">
       <div class="stat-box"><div class="stat-num">${teamRoster.length}</div><div class="stat-label">Roster Spots</div></div>
-      <div class="stat-box"><div class="stat-num">${acceleratedCount}</div><div class="stat-label">On Accelerated Cost</div></div>
+      <div class="stat-box">
+        <div class="stat-num">${k2Players.length}</div>
+        <div class="stat-label">On K2 (Final Keep Year)</div>
+        ${k2Players.length ? `<div class="stat-sub">${k2Players.map(p=>p.player).join(', ')}</div>` : ''}
+      </div>
       <div class="stat-box"><div class="stat-num">${teamPicks.length}</div><div class="stat-label">Future Picks</div></div>
       <div class="stat-box"><div class="stat-num" style="font-size:${dp ? '20px' : '36px'};">${dp ? dp.player : 'Available'}</div><div class="stat-label">Designated Player</div></div>
     </div>
